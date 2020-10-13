@@ -5,8 +5,11 @@ source from https://github.com/operator-framework/operator-sdk
 import to intellij sample-operator/java-operator-sdk/samples/pom.xml
 
 howto run?
+# minikube
 - minikube start
 - minikube dashboard
+- minikube stop
+- minikube delete
 
 $HOME = /Users/meron/Work/minikube/sample-operator
 
@@ -21,6 +24,3 @@ $HOME = /Users/meron/Work/minikube/sample-operator
 
 # delete custom resource
 - kubectl delete -f $HOME/java-operator-sdk/samples/pure-java/src/main/resources/example.yaml
-
-- minikube stop
-- minikube delete
