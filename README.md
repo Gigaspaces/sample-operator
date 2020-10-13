@@ -12,10 +12,11 @@ howto run?
 - minikube delete
 
 # manager 
-helm install hello xap-manager --set service.type="NodePort",service.api.nodePort=30890
+- helm install hello xap-manager --set service.type="NodePort",service.api.nodePort=30890
+
 # pu - just to check everything is working
-helm install world xap-pu --set manager.name=hello
-helm del world --keep-history
+- helm install world xap-pu --set manager.name=hello
+- helm del world --keep-history
 
 
 # home dir
