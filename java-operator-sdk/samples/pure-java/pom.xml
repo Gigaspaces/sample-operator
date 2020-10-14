@@ -3,16 +3,9 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>com.gigaspaces</groupId>
-        <artifactId>gs-java-operator-sdk-samples</artifactId>
-        <version>0.1</version>
-    </parent>
-
-    <artifactId>gs-operator-framework-samples-pure-java</artifactId>
-    <name>Operator SDK - Samples - Pure Java</name>
-    <description>Sample usage with pure java app</description>
-    <packaging>jar</packaging>
+    <groupId>com.gigaspaces</groupId>
+    <artifactId>gs-operator</artifactId>
+    <version>0.1</version>
 
     <properties>
         <java.version>8</java.version>
@@ -34,5 +27,4 @@
             <version>${log4j.version}</version>
         </dependency>
     </dependencies>
-
 </project>
