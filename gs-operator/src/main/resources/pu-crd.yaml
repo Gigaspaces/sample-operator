@@ -22,6 +22,9 @@ spec:
                 license:
                   type: string
                   default: "tryme"
+                ha:
+                  type: boolean
+                  default: false
       # subresources describes the subresources for custom resources.
       subresources:
         # status enables the status subresource.

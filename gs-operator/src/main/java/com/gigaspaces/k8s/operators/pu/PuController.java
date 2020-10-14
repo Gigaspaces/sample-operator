@@ -99,7 +99,7 @@ public class PuController implements ResourceController<Pu> {
                         .build())
                 .endMetadata();
         statefulSet.withNewSpec()
-                .withReplicas(1)
+                .withReplicas(spec.isHa() ? 2 : 1)
                 .withServiceName(xap_pu_name)
                 .withNewSelector()
                     .withMatchLabels(MapBuilder.singletonMap("selectorId", xap_pu_fullname_pod_suffix))

@@ -3,4 +3,5 @@ kind: ProcessingUnit
 metadata:
   name: demo
 spec:
-  license: "tryme"
+  #license: "tryme"
+  ha: false
