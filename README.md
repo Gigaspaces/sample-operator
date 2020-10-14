@@ -26,7 +26,7 @@ $HOME = /Users/meron/Work/minikube/sample-operator
 - kubectl apply -f $HOME/gs-operator/src/main/resources/crd.yaml
 
 # run the operator externally
-- mvn exec:java -Dexec.mainClass=com.github.containersolutions.operator.sample.PureJavaApplicationRunner
+- mvn exec:java -Dexec.mainClass=com.gigaspaces.k8s.operators.DevOperator
 
 # invoke a trigger on custom resource
 - kubectl apply -f $HOME/gs-operator/src/main/resources/example.yaml

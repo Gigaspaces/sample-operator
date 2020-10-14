@@ -1,11 +1,11 @@
-package com.github.containersolutions.operator.sample.pu;
+package com.gigaspaces.k8s.operators.pu;
 
+import com.gigaspaces.k8s.operators.ListBuilder;
+import com.gigaspaces.k8s.operators.MapBuilder;
 import com.github.containersolutions.operator.api.Context;
 import com.github.containersolutions.operator.api.Controller;
 import com.github.containersolutions.operator.api.ResourceController;
 import com.github.containersolutions.operator.api.UpdateControl;
-import com.github.containersolutions.operator.sample.ListBuilder;
-import com.github.containersolutions.operator.sample.MapBuilder;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;

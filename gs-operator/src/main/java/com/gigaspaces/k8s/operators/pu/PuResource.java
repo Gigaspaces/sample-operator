@@ -1,4 +1,4 @@
-package com.github.containersolutions.operator.sample.pu;
+package com.gigaspaces.k8s.operators.pu;
 
 import io.fabric8.kubernetes.client.CustomResource;
 

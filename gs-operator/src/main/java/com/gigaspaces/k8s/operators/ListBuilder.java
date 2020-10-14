@@ -1,4 +1,4 @@
-package com.github.containersolutions.operator.sample;
+package com.gigaspaces.k8s.operators;
 
 import java.util.*;
 
