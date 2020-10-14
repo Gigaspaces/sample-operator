@@ -1,0 +1,7 @@
+apiVersion: "pu.sample.javaoperatorsdk/v1"
+kind: PuResource
+metadata:
+  name: foo5-meta
+  status: intial-meta
+#spec:
+#  encoding: utf8

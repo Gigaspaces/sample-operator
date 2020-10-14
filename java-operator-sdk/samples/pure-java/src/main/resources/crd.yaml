@@ -1,0 +1,25 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: pus.pu.sample.javaoperatorsdk
+spec:
+  group: pu.sample.javaoperatorsdk
+  version: v1
+  subresources:
+    status: {}
+  scope: Namespaced
+  names:
+    plural: pus
+    singular: pu
+    kind: PuResource
+#  validation:
+#    openAPIV3Schema:
+#      type: object
+#      properties:
+#        spec:
+#          type: object
+#          required:
+#            - encoding
+#          properties:
+#            encoding:
+#              type: string
