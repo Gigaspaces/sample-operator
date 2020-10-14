@@ -1,7 +1,7 @@
-apiVersion: "pu.sample.javaoperatorsdk/v1"
-kind: PuResource
+apiVersion: "gigaspaces.com/v1"
+kind: ProcessingUnit
 metadata:
   name: foo5-meta
-  status: intial-meta
+#  status: intial-meta
 #spec:
 #  encoding: utf8

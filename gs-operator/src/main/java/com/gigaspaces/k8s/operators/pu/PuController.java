@@ -13,13 +13,11 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Controller(
-        crdName = "pus.pu.sample.javaoperatorsdk",
-        customResourceClass = PuResource.class)
-public class PuController implements ResourceController<PuResource> {
+@Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
+public class PuController implements ResourceController<Pu> {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
-    private KubernetesClient kubernetesClient;
+    private final KubernetesClient kubernetesClient;
 
     String xap_pu_name = "xap-pu";
     String pod_suffix = "0";
@@ -36,8 +34,8 @@ public class PuController implements ResourceController<PuResource> {
     }
 
     @Override
-    public boolean deleteResource(PuResource puResource, Context<PuResource> context) {
-        log.info("\n===> deleteResource \n" + puResource);
+    public boolean deleteResource(Pu pu, Context<Pu> context) {
+        log.info("\n===> deleteResource \n" + pu);
 
         StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace)
                 .withName(xap_pu_fullname_pod_suffix).get();
@@ -52,8 +50,8 @@ public class PuController implements ResourceController<PuResource> {
     }
 
     @Override
-    public UpdateControl createOrUpdateResource(PuResource puResource, Context<PuResource> context) {
-        log.info("\n===> createOrUpdateResource \n" + puResource);
+    public UpdateControl createOrUpdateResource(Pu pu, Context<Pu> context) {
+        log.info("\n===> createOrUpdateResource \n" + pu);
 
 //        Service serviceExists = kubernetesClient.services().withName(xap_pu_service_fullname_pod_suffix).get();
 //        if (serviceExists != null) {
@@ -128,7 +126,7 @@ public class PuController implements ResourceController<PuResource> {
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
 
-        return UpdateControl.updateStatusSubResource(puResource);
+        return UpdateControl.updateStatusSubResource(pu);
     }
 
     private Container getContainer() {

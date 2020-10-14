@@ -23,7 +23,7 @@ howto run?
 $HOME = /Users/meron/Work/minikube/sample-operator
 
 # apply the custom resource definition
-- kubectl apply -f $HOME/gs-operator/src/main/resources/crd.yaml
+- kubectl apply -f $HOME/gs-operator/src/main/resources/pu-crd.yaml
 
 # run the operator externally
 - mvn exec:java -Dexec.mainClass=com.gigaspaces.k8s.operators.DevOperator
