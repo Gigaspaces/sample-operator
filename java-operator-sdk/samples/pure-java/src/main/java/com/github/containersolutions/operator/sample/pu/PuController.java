@@ -1,9 +1,11 @@
-package com.github.containersolutions.operator.sample;
+package com.github.containersolutions.operator.sample.pu;
 
 import com.github.containersolutions.operator.api.Context;
 import com.github.containersolutions.operator.api.Controller;
 import com.github.containersolutions.operator.api.ResourceController;
 import com.github.containersolutions.operator.api.UpdateControl;
+import com.github.containersolutions.operator.sample.ListBuilder;
+import com.github.containersolutions.operator.sample.MapBuilder;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;

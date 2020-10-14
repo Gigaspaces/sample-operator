@@ -1,4 +1,4 @@
-package com.github.containersolutions.operator.sample;
+package com.github.containersolutions.operator.sample.pu;
 
 public class PuSpec {
     private String name;
