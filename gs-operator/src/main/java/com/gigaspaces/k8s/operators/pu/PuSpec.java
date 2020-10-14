@@ -1,13 +1,12 @@
 package com.gigaspaces.k8s.operators.pu;
 
 public class PuSpec {
-    private String name;
+    private String license;
 
-    public String getName() {
-        return name;
+    public String getLicense() {
+        return license;
     }
-
-    public void setName(String name) {
-        this.name = name;
+    public void setLicense(String license) {
+        this.license = license;
     }
 }

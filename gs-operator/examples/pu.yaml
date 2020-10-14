@@ -1,7 +1,6 @@
 apiVersion: "gigaspaces.com/v1"
 kind: ProcessingUnit
 metadata:
-  name: foo5-meta
-#  status: intial-meta
-#spec:
-#  encoding: utf8
+  name: demo
+spec:
+  license: "tryme"

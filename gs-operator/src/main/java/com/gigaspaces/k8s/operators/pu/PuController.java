@@ -80,6 +80,7 @@ public class PuController implements ResourceController<Pu> {
 //
 //        }
 
+        PuSpec spec = pu.getSpec();
         StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace)
                 .withName(xap_pu_fullname_pod_suffix).get();
         if (exists != null) {
@@ -117,7 +118,7 @@ public class PuController implements ResourceController<Pu> {
                         //.withNewAffinity() //TODO
                         .withRestartPolicy("Always")
                         .withTerminationGracePeriodSeconds(30L)
-                        .withContainers(getContainer())
+                        .withContainers(getContainer(spec))
                     .endSpec()
                 .endTemplate()
                 .endSpec();
@@ -129,7 +130,7 @@ public class PuController implements ResourceController<Pu> {
         return UpdateControl.updateStatusSubResource(pu);
     }
 
-    private Container getContainer() {
+    private Container getContainer(PuSpec spec) {
         Container container = new Container();
         container.setName("pu-container");
         container.setResources(new ResourceRequirements(
@@ -144,7 +145,7 @@ public class PuController implements ResourceController<Pu> {
                 .add("verbose=true")
                 .add("name=world")
                 .add("release.namespace="+namespace)
-                .add("license=tryme")
+                .add("license=" + spec.getLicense())
                 .add("partitionId=1")
                 .add("java.heap=limit-150Mi")
                 .add("manager.name=hello")

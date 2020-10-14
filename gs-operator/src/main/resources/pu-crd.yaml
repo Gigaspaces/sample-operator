@@ -15,6 +15,13 @@ spec:
       schema:
         openAPIV3Schema:
           type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                license:
+                  type: string
+                  default: "tryme"
       # subresources describes the subresources for custom resources.
       subresources:
         # status enables the status subresource.
