@@ -19,7 +19,6 @@ public class PureJavaApplicationRunner {
     public static void main(String[] args) throws InterruptedException {
         KubernetesClient client = new DefaultKubernetesClient();
         Operator operator = new Operator(client);
-//        operator.registerController(new CustomServiceController(client));
         operator.registerController(new PuController(client));
 
 //        JobList list = client.batch().jobs().list();
