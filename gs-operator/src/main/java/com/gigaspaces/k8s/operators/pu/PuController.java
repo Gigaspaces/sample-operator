@@ -20,10 +20,8 @@ public class PuController implements ResourceController<Pu> {
     private final KubernetesClient kubernetesClient;
 
     String xap_pu_name = "xap-pu";
-    String release = "world";
     String image = "gigaspaces/xap-enterprise:15.8.0-m6";
     String chart = "xap-pu-15.8.0-m6";
-    String namespace = "default";
 
     public PuController(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
@@ -35,8 +33,9 @@ public class PuController implements ResourceController<Pu> {
 
         PuSpec spec = pu.getSpec();
         int partitions = spec.getPartitions();
+        String namespace = pu.getMetadata().getNamespace();
         for (int i = 0; i < partitions; i++) {
-            String name = getStatefulSetName(spec, i);
+            String name = getStatefulSetName(pu, i);
             StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get();
             if (exists == null) {
                 log.info("stateful set '" + name + "' does not exist");
@@ -79,29 +78,32 @@ public class PuController implements ResourceController<Pu> {
 //
 //        }
 
+        pu.getMetadata().getName();
         PuSpec spec = pu.getSpec();
 
         int partitions = spec.getPartitions();
         int created = 0;
         for (int i = 0; i < partitions; i++) {
-            if (createStatefulSet(spec, i))
+            if (createStatefulSet(pu, i))
                 created++;
         }
         return created == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
     }
 
-    private String getStatefulSetName(PuSpec spec, int partition) {
-        return release + "-" + xap_pu_name + "-" + partition;
+    private String getStatefulSetName(Pu pu, int partition) {
+        return pu.getMetadata().getName() + "-" + xap_pu_name + "-" + partition;
     }
 
-    private boolean createStatefulSet(PuSpec spec, int partition) {
-        String name = getStatefulSetName(spec, partition);
+    private boolean createStatefulSet(Pu pu, int partition) {
+        String name = getStatefulSetName(pu, partition);
+        String namespace = pu.getMetadata().getNamespace();
         StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get();
         if (exists != null) {
             log.info("stateful set '" + name + "' already exists");
             return false;
         }
 
+        PuSpec spec = pu.getSpec();
         StatefulSetBuilder statefulSet = new StatefulSetBuilder();
         statefulSet.withNewMetadata()
                 .withNamespace(namespace)
@@ -109,7 +111,7 @@ public class PuController implements ResourceController<Pu> {
                 .withLabels(new MapBuilder<String,String>()
                         .put("app", xap_pu_name)
                         .put("chart", chart)
-                        .put("release", release)
+                        .put("release", pu.getMetadata().getName())
                         .build())
                 .endMetadata();
         statefulSet.withNewSpec()
@@ -122,7 +124,7 @@ public class PuController implements ResourceController<Pu> {
                 .withNewMetadata()
                 .withLabels(new MapBuilder<String,String>()
                         .put("app", xap_pu_name)
-                        .put("release", release)
+                        .put("release", pu.getMetadata().getName())
                         .put("component", "space")
                         .put("selectorId", name)
                         .put("partitionId", "1")
@@ -132,7 +134,7 @@ public class PuController implements ResourceController<Pu> {
                 //.withNewAffinity() //TODO
                 .withRestartPolicy("Always")
                 .withTerminationGracePeriodSeconds(30L)
-                .withContainers(getContainer(spec))
+                .withContainers(getContainer(pu))
                 .endSpec()
                 .endTemplate()
                 .endSpec();
@@ -143,7 +145,8 @@ public class PuController implements ResourceController<Pu> {
         return true;
     }
 
-    private Container getContainer(PuSpec spec) {
+    private Container getContainer(Pu pu) {
+        PuSpec spec = pu.getSpec();
         Container container = new Container();
         container.setName("pu-container");
         container.setResources(new ResourceRequirements(
@@ -156,8 +159,8 @@ public class PuController implements ResourceController<Pu> {
         container.setArgs(new ListBuilder<String>()
                 .add("component=pu")
                 .add("verbose=true")
-                .add("name=world")
-                .add("release.namespace="+namespace)
+                .add("name=" + pu.getMetadata().getName())
+                .add("release.namespace=" + pu.getMetadata().getNamespace())
                 .add("license=" + spec.getLicense())
                 .add("partitionId=1")
                 .add("java.heap=limit-150Mi")
