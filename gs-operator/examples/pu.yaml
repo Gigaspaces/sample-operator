@@ -4,4 +4,5 @@ metadata:
   name: demo
 spec:
   #license: "tryme"
+  partitions: 1
   ha: false

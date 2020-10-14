@@ -20,10 +20,6 @@ public class PuController implements ResourceController<Pu> {
     private final KubernetesClient kubernetesClient;
 
     String xap_pu_name = "xap-pu";
-    String pod_suffix = "0";
-    String xap_pu_fullname = "world-xap-pu";
-    String xap_pu_fullname_pod_suffix = "world-xap-pu-0";
-    String xap_pu_service_fullname_pod_suffix = "world-xap-pu-0-service";
     String release = "world";
     String image = "gigaspaces/xap-enterprise:15.8.0-m6";
     String chart = "xap-pu-15.8.0-m6";
@@ -37,15 +33,18 @@ public class PuController implements ResourceController<Pu> {
     public boolean deleteResource(Pu pu, Context<Pu> context) {
         log.info("\n===> deleteResource \n" + pu);
 
-        StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace)
-                .withName(xap_pu_fullname_pod_suffix).get();
-        if (exists == null) {
-            log.info("stateful set does not exist");
-            return true;
+        PuSpec spec = pu.getSpec();
+        int partitions = spec.getPartitions();
+        for (int i = 0; i < partitions; i++) {
+            String name = getStatefulSetName(spec, i);
+            StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get();
+            if (exists == null) {
+                log.info("stateful set '" + name + "' does not exist");
+            } else {
+                Boolean delete = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).delete();
+                log.info("Deleted (" + delete + ") StatefulSet with name " + exists.getMetadata().getName());
+            }
         }
-
-        Boolean delete = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(xap_pu_fullname_pod_suffix).delete();
-        log.info("Deleted ("+delete+") StatefulSet with name " + exists.getMetadata().getName());
         return true;
     }
 
@@ -81,17 +80,32 @@ public class PuController implements ResourceController<Pu> {
 //        }
 
         PuSpec spec = pu.getSpec();
-        StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace)
-                .withName(xap_pu_fullname_pod_suffix).get();
+
+        int partitions = spec.getPartitions();
+        int created = 0;
+        for (int i = 0; i < partitions; i++) {
+            if (createStatefulSet(spec, i))
+                created++;
+        }
+        return created == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
+    }
+
+    private String getStatefulSetName(PuSpec spec, int partition) {
+        return release + "-" + xap_pu_name + "-" + partition;
+    }
+
+    private boolean createStatefulSet(PuSpec spec, int partition) {
+        String name = getStatefulSetName(spec, partition);
+        StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get();
         if (exists != null) {
-            log.info("stateful set already exists");
-            return UpdateControl.noUpdate();
+            log.info("stateful set '" + name + "' already exists");
+            return false;
         }
 
         StatefulSetBuilder statefulSet = new StatefulSetBuilder();
         statefulSet.withNewMetadata()
                 .withNamespace(namespace)
-                .withName(xap_pu_fullname_pod_suffix)
+                .withName(name)
                 .withLabels(new MapBuilder<String,String>()
                         .put("app", xap_pu_name)
                         .put("chart", chart)
@@ -102,32 +116,31 @@ public class PuController implements ResourceController<Pu> {
                 .withReplicas(spec.isHa() ? 2 : 1)
                 .withServiceName(xap_pu_name)
                 .withNewSelector()
-                    .withMatchLabels(MapBuilder.singletonMap("selectorId", xap_pu_fullname_pod_suffix))
+                .withMatchLabels(MapBuilder.singletonMap("selectorId", name))
                 .endSelector()
                 .withNewTemplate()
-                    .withNewMetadata()
-                        .withLabels(new MapBuilder<String,String>()
-                                .put("app", xap_pu_name)
-                                .put("release", release)
-                                .put("component", "space")
-                                .put("selectorId", xap_pu_fullname_pod_suffix)
-                                .put("partitionId", "1")
-                                .build())
-                    .endMetadata()
-                    .withNewSpec()
-                        //.withNewAffinity() //TODO
-                        .withRestartPolicy("Always")
-                        .withTerminationGracePeriodSeconds(30L)
-                        .withContainers(getContainer(spec))
-                    .endSpec()
+                .withNewMetadata()
+                .withLabels(new MapBuilder<String,String>()
+                        .put("app", xap_pu_name)
+                        .put("release", release)
+                        .put("component", "space")
+                        .put("selectorId", name)
+                        .put("partitionId", "1")
+                        .build())
+                .endMetadata()
+                .withNewSpec()
+                //.withNewAffinity() //TODO
+                .withRestartPolicy("Always")
+                .withTerminationGracePeriodSeconds(30L)
+                .withContainers(getContainer(spec))
+                .endSpec()
                 .endTemplate()
                 .endSpec();
 
         StatefulSet item = statefulSet.build();
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
-
-        return UpdateControl.updateStatusSubResource(pu);
+        return true;
     }
 
     private Container getContainer(PuSpec spec) {

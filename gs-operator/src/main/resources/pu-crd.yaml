@@ -22,6 +22,9 @@ spec:
                 license:
                   type: string
                   default: "tryme"
+                partitions:
+                  type: integer
+                  default: 1
                 ha:
                   type: boolean
                   default: false
