@@ -4,12 +4,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>com.github.containersolutions</groupId>
-        <artifactId>java-operator-sdk-samples</artifactId>
-        <version>1.3.1-SNAPSHOT</version>
+        <groupId>com.gigaspaces</groupId>
+        <artifactId>gs-java-operator-sdk-samples</artifactId>
+        <version>0.1</version>
     </parent>
 
-    <artifactId>operator-framework-samples-pure-java</artifactId>
+    <artifactId>gs-operator-framework-samples-pure-java</artifactId>
     <name>Operator SDK - Samples - Pure Java</name>
     <description>Sample usage with pure java app</description>
     <packaging>jar</packaging>
@@ -22,8 +22,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.github.containersolutions</groupId>
-            <artifactId>operator-framework-samples-common</artifactId>
+            <groupId>com.gigaspaces</groupId>
+            <artifactId>gs-operator-framework-samples-common</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
