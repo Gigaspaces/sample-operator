@@ -128,7 +128,7 @@ public class PuController implements ResourceController<PuResource> {
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
 
-        return UpdateControl.noUpdate();
+        return UpdateControl.updateStatusSubResource(puResource);
     }
 
     private Container getContainer() {
