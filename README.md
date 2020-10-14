@@ -29,7 +29,7 @@ $HOME = /Users/meron/Work/minikube/sample-operator
 - mvn exec:java -Dexec.mainClass=com.gigaspaces.k8s.operators.DevOperator
 
 # invoke a trigger on custom resource
-- kubectl apply -f $HOME/gs-operator/src/main/resources/example.yaml
+- kubectl apply -f $HOME/gs-operator/examples/pu.yaml
 
 # delete custom resource
-- kubectl delete -f $HOME/gs-operator/src/main/resources/example.yaml
+- kubectl delete -f $HOME/gs-operator/examples/pu.yaml
