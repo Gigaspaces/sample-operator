@@ -7,9 +7,11 @@ import com.github.containersolutions.operator.api.Controller;
 import com.github.containersolutions.operator.api.ResourceController;
 import com.github.containersolutions.operator.api.UpdateControl;
 import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.api.model.apps.DoneableStatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,14 +35,13 @@ public class PuController implements ResourceController<Pu> {
 
         PuSpec spec = pu.getSpec();
         int partitions = spec.getPartitions();
-        String namespace = pu.getMetadata().getNamespace();
         for (int i = 0; i < partitions; i++) {
             String name = getStatefulSetName(pu, i);
-            StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get();
+            StatefulSet exists = statefulSet(pu, name).get();
             if (exists == null) {
                 log.info("stateful set '" + name + "' does not exist");
             } else {
-                Boolean delete = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).delete();
+                Boolean delete = statefulSet(pu, name).delete();
                 log.info("Deleted (" + delete + ") StatefulSet with name " + exists.getMetadata().getName());
             }
         }
@@ -48,60 +49,89 @@ public class PuController implements ResourceController<Pu> {
     }
 
     @Override
-    public UpdateControl createOrUpdateResource(Pu pu, Context<Pu> context) {
+    public UpdateControl<Pu> createOrUpdateResource(Pu pu, Context<Pu> context) {
         log.info("\n===> createOrUpdateResource \n" + pu);
+        return pu.getMetadata().getGeneration() == 1 ? create(pu) : update(pu);
+    }
 
-//        Service serviceExists = kubernetesClient.services().withName(xap_pu_service_fullname_pod_suffix).get();
-//        if (serviceExists != null) {
-//            log.info("service already exists");
-//        } else {
-//
-//            ServiceBuilder serviceBuilder = new ServiceBuilder();
-//            serviceBuilder.withNewMetadata()
-//                    .withName(xap_pu_service_fullname_pod_suffix)
-//                    .withLabels(new MapBuilder<String, String>()
-//                            .put("app", xap_pu_name)
-//                            .put("chart", chart)
-//                            .put("release", release)
-//                            .build())
-//                    .endMetadata();
-//            serviceBuilder.withNewSpec()
-//                    .withType("LoadBalancer")
-//                    .withSelector(new MapBuilder<String, String>()
-//                            .put("statefulset.kubernetes.io/pod-name", xap_pu_service_fullname_pod_suffix)
-//                            .put("app", xap_pu_name)
-//                            .put("selectorId", xap_pu_fullname_pod_suffix)
-//                            .put("partitionId", "1")
-//                            .build())
-//                    .withPorts(buildServicePort())
-//                    .endSpec();
-//
-//        }
-
-        pu.getMetadata().getName();
+    private UpdateControl<Pu> create(Pu pu) {
+        log.info("DEBUG - creating pu {}", pu.getMetadata().getName());
+        // TODO: create zk topology if needed.
         PuSpec spec = pu.getSpec();
-
         int partitions = spec.getPartitions();
         int created = 0;
         for (int i = 0; i < partitions; i++) {
-            if (createStatefulSet(pu, i))
+            StatefulSet statefulSet = statefulSet(pu, i).get();
+            if (statefulSet == null) {
+                createStatefulSet(pu, i);
                 created++;
+            } else {
+                log.info("stateful set '" + statefulSet.getMetadata().getName() + "' already exists");
+            }
         }
         return created == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
+    }
+
+    private UpdateControl<Pu> update(Pu pu) {
+        if (isHorizontalScale(pu)) {
+            log.info("Horizontal scaling is under construction"); // TODO: implement.
+        } else {
+            log.info("DEBUG - Updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
+            PuSpec spec = pu.getSpec();
+            int partitions = spec.getPartitions();
+            int modifications = 0;
+            for (int i = 0; i < partitions; i++) {
+                StatefulSet statefulSet = statefulSet(pu, i).get();
+                if (statefulSet == null) {
+                    createStatefulSet(pu, i);
+                    modifications++;
+                } else {
+                    if (updateStatefulSet(statefulSet, pu))
+                        modifications++;
+                }
+            }
+            return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
+        }
+        return null;
+    }
+
+    private boolean isHorizontalScale(Pu pu) {
+        // TODO: fetch topology from zk and compare number of partitions
+        return false;
+    }
+
+    private boolean updateStatefulSet(StatefulSet statefulSet, Pu pu) {
+        log.info("DEBUG - updating statefulset {} from {} to {}",
+                statefulSet.getMetadata().getName(),
+                statefulSet.getMetadata().getGeneration(),
+                pu.getMetadata().getGeneration());
+        // TODO: update stateful set.
+        /*
+        statefulSet(pu, statefulSet.getMetadata().getName()).edit()
+                ...
+                .done();
+         */
+        return true;
     }
 
     private String getStatefulSetName(Pu pu, int partition) {
         return pu.getMetadata().getName() + "-" + xap_pu_name + "-" + partition;
     }
 
-    private boolean createStatefulSet(Pu pu, int partition) {
+    private RollableScalableResource<StatefulSet, DoneableStatefulSet> statefulSet(Pu pu, int partition) {
+        return statefulSet(pu, getStatefulSetName(pu, partition));
+    }
+
+    private RollableScalableResource<StatefulSet, DoneableStatefulSet> statefulSet(Pu pu, String name) {
+        return kubernetesClient.apps().statefulSets()
+                .inNamespace(pu.getMetadata().getNamespace())
+                .withName(name);
+    }
+
+    private void createStatefulSet(Pu pu, int partition) {
         String name = getStatefulSetName(pu, partition);
         String namespace = pu.getMetadata().getNamespace();
-        StatefulSet exists = kubernetesClient.apps().statefulSets().inNamespace(namespace).withName(name).get();
-        if (exists != null) {
-            log.info("stateful set '" + name + "' already exists");
-            return false;
-        }
+        log.info("DEBUG - Creating statefulset {} with generation {}", name, pu.getMetadata().getGeneration());
 
         PuSpec spec = pu.getSpec();
         StatefulSetBuilder statefulSet = new StatefulSetBuilder();
@@ -142,7 +172,6 @@ public class PuController implements ResourceController<Pu> {
         StatefulSet item = statefulSet.build();
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
-        return true;
     }
 
     private Container getContainer(Pu pu) {
@@ -195,7 +224,6 @@ public class PuController implements ResourceController<Pu> {
         probe.setFailureThreshold(3);
         return probe;
     }
-
 
     private Probe getReadinessProbe() {
         Probe probe = new Probe();
