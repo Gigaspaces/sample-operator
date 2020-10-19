@@ -56,7 +56,7 @@ public class PuController implements ResourceController<Pu> {
         PuSpec spec = pu.getSpec();
         int partitions = spec.getPartitions();
         int created = 0;
-        for (int i = 0; i < partitions; i++) {
+        for (int i = 1; i <= partitions; i++) {
             StatefulSet statefulSet = statefulSet(pu, i).get();
             if (statefulSet == null) {
                 createStatefulSet(pu, i);
@@ -149,14 +149,14 @@ public class PuController implements ResourceController<Pu> {
                         .put("release", pu.getMetadata().getName())
                         .put("component", "space")
                         .put("selectorId", name)
-                        .put("partitionId", "1")
+                        .put("partitionId", String.valueOf(partition))
                         .build())
                 .endMetadata()
                 .withNewSpec()
                 //.withNewAffinity() //TODO
                 .withRestartPolicy("Always")
                 .withTerminationGracePeriodSeconds(30L)
-                .withContainers(getContainer(pu))
+                .withContainers(getContainer(pu, partition))
                 .endSpec()
                 .endTemplate()
                 .endSpec();
@@ -166,7 +166,7 @@ public class PuController implements ResourceController<Pu> {
         log.info("created StatefulSet with name " + created.getMetadata().getName());
     }
 
-    private Container getContainer(Pu pu) {
+    private Container getContainer(Pu pu, int partitionId) {
         PuSpec spec = pu.getSpec();
         Container container = new Container();
         container.setName("pu-container");
@@ -183,10 +183,20 @@ public class PuController implements ResourceController<Pu> {
                 .add("name=" + pu.getMetadata().getName())
                 .add("release.namespace=" + pu.getMetadata().getNamespace())
                 .add("license=" + spec.getLicense())
-                .add("partitionId=1")
+                .add("partitions=" + spec.getPartitions()) // TODO: redundant when zk integration is done
+                .add("ha=" + spec.isHa()) // TODO: redundant when zk integration is done
+                .add("partitionId=" + partitionId)
                 .add("java.heap=limit-150Mi")
                 .add("manager.name=" + spec.getManagerName())
                 .add("manager.ports.api=" + spec.getManagerApiPort())
+                /*
+            {{- if ($root.Values.resourceUrl) }}
+            - "pu.resourceUrl={{$root.Values.resourceUrl}}"
+            {{- end }}
+            {{- if ($root.Values.properties) }}
+            - "pu.properties={{$root.Values.properties}}"
+            {{- end }}
+                 */
                 .build());
 
         //by default - disabled
