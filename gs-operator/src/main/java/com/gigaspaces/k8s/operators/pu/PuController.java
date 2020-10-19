@@ -21,10 +21,6 @@ public class PuController implements ResourceController<Pu> {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final KubernetesClient kubernetesClient;
 
-    String xap_pu_name = "xap-pu";
-    String image = "gigaspaces/xap-enterprise:15.8.0-m6";
-    String chart = "xap-pu-15.8.0-m6";
-
     public PuController(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
     }
@@ -36,7 +32,7 @@ public class PuController implements ResourceController<Pu> {
         PuSpec spec = pu.getSpec();
         int partitions = spec.getPartitions();
         for (int i = 0; i < partitions; i++) {
-            String name = getStatefulSetName(pu, i);
+            String name = pu.getStatefulSetName(i);
             StatefulSet exists = statefulSet(pu, name).get();
             if (exists == null) {
                 log.info("stateful set '" + name + "' does not exist");
@@ -114,12 +110,8 @@ public class PuController implements ResourceController<Pu> {
         return true;
     }
 
-    private String getStatefulSetName(Pu pu, int partition) {
-        return pu.getMetadata().getName() + "-" + xap_pu_name + "-" + partition;
-    }
-
     private RollableScalableResource<StatefulSet, DoneableStatefulSet> statefulSet(Pu pu, int partition) {
-        return statefulSet(pu, getStatefulSetName(pu, partition));
+        return statefulSet(pu, pu.getStatefulSetName(partition));
     }
 
     private RollableScalableResource<StatefulSet, DoneableStatefulSet> statefulSet(Pu pu, String name) {
@@ -129,7 +121,7 @@ public class PuController implements ResourceController<Pu> {
     }
 
     private void createStatefulSet(Pu pu, int partition) {
-        String name = getStatefulSetName(pu, partition);
+        String name = pu.getStatefulSetName(partition);
         String namespace = pu.getMetadata().getNamespace();
         log.info("DEBUG - Creating statefulset {} with generation {}", name, pu.getMetadata().getGeneration());
 
@@ -139,21 +131,21 @@ public class PuController implements ResourceController<Pu> {
                 .withNamespace(namespace)
                 .withName(name)
                 .withLabels(new MapBuilder<String,String>()
-                        .put("app", xap_pu_name)
-                        .put("chart", chart)
+                        .put("app", spec.getApp())
+                        .put("chart", spec.getChart()) // TODO: is this required, or just leftovers from helm?
                         .put("release", pu.getMetadata().getName())
                         .build())
                 .endMetadata();
         statefulSet.withNewSpec()
                 .withReplicas(spec.isHa() ? 2 : 1)
-                .withServiceName(xap_pu_name)
+                .withServiceName(spec.getApp())
                 .withNewSelector()
                 .withMatchLabels(MapBuilder.singletonMap("selectorId", name))
                 .endSelector()
                 .withNewTemplate()
                 .withNewMetadata()
                 .withLabels(new MapBuilder<String,String>()
-                        .put("app", xap_pu_name)
+                        .put("app", spec.getApp())
                         .put("release", pu.getMetadata().getName())
                         .put("component", "space")
                         .put("selectorId", name)
@@ -181,7 +173,7 @@ public class PuController implements ResourceController<Pu> {
         container.setResources(new ResourceRequirements(
                 MapBuilder.singletonMap("memory", new Quantity("400", "Mi")),
                 MapBuilder.singletonMap("memory", new Quantity("400", "Mi"))));
-        container.setImage(image);
+        container.setImage(spec.getImage());
         container.setEnv(ListBuilder.singletonList(new EnvVar("GS_OPTIONS_EXT", null, null)));
 
         container.setCommand(ListBuilder.singletonList("tools/kubernetes/entrypoint.sh"));

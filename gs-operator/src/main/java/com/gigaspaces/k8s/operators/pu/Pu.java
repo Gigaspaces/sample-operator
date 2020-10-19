@@ -12,4 +12,8 @@ public class Pu extends CustomResource {
     public void setSpec(PuSpec spec) {
         this.spec = spec;
     }
+
+    public String getStatefulSetName(int partition) {
+        return getMetadata().getName() + "-" + getSpec().getApp() + "-" + partition;
+    }
 }

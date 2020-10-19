@@ -25,4 +25,21 @@ public class PuSpec {
     public void setHa(boolean ha) {
         this.ha = ha;
     }
+
+    public String getImage() {
+        // TODO: Configurable
+        // TODO: xap vs. insightedge
+        return "gigaspaces/xap-enterprise:15.8.0-m6";
+    }
+
+    public String getChart() {
+        // TODO: is this required, or just leftovers from helm? if so, configurable
+        // TODO: xap vs. insightedge
+        return "xap-pu-15.8.0-m6";
+    }
+
+    public String getApp() {
+        // TODO: xap vs. insightedge
+        return "xap-pu";
+    }
 }
