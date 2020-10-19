@@ -185,8 +185,8 @@ public class PuController implements ResourceController<Pu> {
                 .add("license=" + spec.getLicense())
                 .add("partitionId=1")
                 .add("java.heap=limit-150Mi")
-                .add("manager.name=hello")
-                .add("manager.ports.api=8090")
+                .add("manager.name=" + spec.getManagerName())
+                .add("manager.ports.api=" + spec.getManagerApiPort())
                 .build());
 
         //by default - disabled

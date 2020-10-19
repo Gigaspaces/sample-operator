@@ -42,4 +42,15 @@ public class PuSpec {
         // TODO: xap vs. insightedge
         return "xap-pu";
     }
+
+    public String getManagerName() {
+        // TODO: Configurable
+        return "hello";
+    }
+
+    public int getManagerApiPort() {
+        // TODO: Configurable
+        return 8090;
+    }
+
 }
