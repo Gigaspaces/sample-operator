@@ -29,13 +29,12 @@ public class PuSpec {
     public String getImage() {
         // TODO: Configurable
         // TODO: xap vs. insightedge
-        return "gigaspaces/xap-enterprise:15.8.0-m6";
+        return "gigaspaces/xap-enterprise:" + getVersion();
     }
 
     public String getChart() {
         // TODO: is this required, or just leftovers from helm? if so, configurable
-        // TODO: xap vs. insightedge
-        return "xap-pu-15.8.0-m6";
+        return getApp() + "-" + getVersion();
     }
 
     public String getApp() {
@@ -53,4 +52,8 @@ public class PuSpec {
         return 8090;
     }
 
+    private String getVersion() {
+        // TODO: infer from platform version via dependency?
+        return "15.5.1";
+    }
 }

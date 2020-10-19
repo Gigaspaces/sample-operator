@@ -31,7 +31,7 @@ public class PuController implements ResourceController<Pu> {
 
         PuSpec spec = pu.getSpec();
         int partitions = spec.getPartitions();
-        for (int i = 0; i < partitions; i++) {
+        for (int i = 1; i <= partitions; i++) {
             String name = pu.getStatefulSetName(i);
             StatefulSet exists = statefulSet(pu, name).get();
             if (exists == null) {
@@ -76,7 +76,7 @@ public class PuController implements ResourceController<Pu> {
             PuSpec spec = pu.getSpec();
             int partitions = spec.getPartitions();
             int modifications = 0;
-            for (int i = 0; i < partitions; i++) {
+            for (int i = 1; i <= partitions; i++) {
                 StatefulSet statefulSet = statefulSet(pu, i).get();
                 if (statefulSet == null) {
                     createStatefulSet(pu, i);
