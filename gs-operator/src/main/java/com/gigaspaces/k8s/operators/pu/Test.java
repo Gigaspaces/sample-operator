@@ -8,10 +8,7 @@ import io.fabric8.kubernetes.client.dsl.MixedOperation;
 import io.fabric8.kubernetes.client.dsl.Resource;
 import io.fabric8.kubernetes.client.dsl.base.CustomResourceDefinitionContext;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Map;
 
 public class Test {
@@ -50,7 +47,8 @@ public class Test {
                 .build();
 
         //typedAPI(kubernetesClient, crdContext);
-        typelessAPI(kubernetesClient, crdContext);
+        //typelessAPI(kubernetesClient, crdContext);
+        typelessAPI2(kubernetesClient, crdContext);
 
     }
 
@@ -58,6 +56,32 @@ public class Test {
         try (InputStream resourceAsStream = this.getClass().getResourceAsStream("/pu-crd.yaml")) {
             CustomResourceDefinition crd = kubernetesClient.customResourceDefinitions().load(resourceAsStream).get();
             kubernetesClient.customResourceDefinitions().create(crd);
+        } catch (IOException ioException) {
+            ioException.printStackTrace();
+        }
+    }
+
+    private void typelessAPI2(KubernetesClient kubernetesClient, CustomResourceDefinitionContext crdContext) {
+        final String INDENT = "  ";
+        StringBuilder stringBuilder =
+                new StringBuilder()
+                        .append("apiVersion: \"gigaspaces.com/v1\"").append("\n")
+                        .append("kind: ProcessingUnit").append("\n")
+                        .append("metadata:").append("\n")
+                        .append(INDENT)
+                            .append("name: demo").append("\n")
+                        .append("spec:").append("\n")
+                        .append(INDENT)
+                            .append("partitions: 1").append("\n")
+                        .append(INDENT)
+                            .append("ha: false").append("\n");
+
+        try (InputStream targetStream = new ByteArrayInputStream(stringBuilder.toString().getBytes())) {
+            // Load from Yaml
+            Map<String, Object> dummyObject = kubernetesClient.customResource(crdContext)
+                    .load(targetStream);
+            // Create Custom Resource
+            kubernetesClient.customResource(crdContext).create("default", dummyObject);
         } catch (IOException ioException) {
             ioException.printStackTrace();
         }
