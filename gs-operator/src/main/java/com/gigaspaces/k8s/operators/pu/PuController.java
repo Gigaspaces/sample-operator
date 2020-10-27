@@ -132,7 +132,6 @@ public class PuController implements ResourceController<Pu> {
                 .withName(name)
                 .withLabels(new MapBuilder<String,String>()
                         .put("app", spec.getApp())
-                        .put("chart", spec.getChart()) // TODO: is this required, or just leftovers from helm?
                         .put("release", pu.getMetadata().getName())
                         .build())
                 .endMetadata();

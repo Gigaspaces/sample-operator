@@ -1,5 +1,7 @@
 package com.gigaspaces.k8s.operators.pu;
 
+import com.gigaspaces.k8s.operators.ProductInfo;
+
 public class PuSpec {
     private String license;
     private int partitions;
@@ -28,18 +30,11 @@ public class PuSpec {
 
     public String getImage() {
         // TODO: Configurable
-        // TODO: xap vs. insightedge
-        return "gigaspaces/xap-enterprise:" + getVersion();
-    }
-
-    public String getChart() {
-        // TODO: is this required, or just leftovers from helm? if so, configurable
-        return getApp() + "-" + getVersion();
+        return "gigaspaces/" + ProductInfo.instance().getProductName() + "-enterprise:" + ProductInfo.instance().getVersion();
     }
 
     public String getApp() {
-        // TODO: xap vs. insightedge
-        return "xap-pu";
+        return ProductInfo.instance().getProductName() + "-pu";
     }
 
     public String getManagerName() {
@@ -50,10 +45,5 @@ public class PuSpec {
     public int getManagerApiPort() {
         // TODO: Configurable
         return 8090;
-    }
-
-    private String getVersion() {
-        // TODO: infer from platform version via dependency?
-        return "15.5.1";
     }
 }
