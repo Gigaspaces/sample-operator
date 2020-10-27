@@ -2,9 +2,11 @@ package com.gigaspaces.k8s.operators.pu;
 
 import com.gigaspaces.k8s.operators.ProductInfo;
 import com.gigaspaces.k8s.operators.common.ImageSpec;
+import com.gigaspaces.k8s.operators.common.ResourcesSpec;
 
 public class PuSpec {
     private ImageSpec image;
+    private ResourcesSpec resources;
     private String license;
     private int partitions;
     private boolean ha;
@@ -56,5 +58,13 @@ public class PuSpec {
     public int getManagerApiPort() {
         // TODO: Configurable
         return 8090;
+    }
+
+    public ResourcesSpec getResources() {
+        return resources;
+    }
+
+    public void setResources(ResourcesSpec resources) {
+        this.resources = resources;
     }
 }

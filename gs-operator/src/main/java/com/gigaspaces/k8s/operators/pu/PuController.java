@@ -2,6 +2,7 @@ package com.gigaspaces.k8s.operators.pu;
 
 import com.gigaspaces.k8s.operators.ListBuilder;
 import com.gigaspaces.k8s.operators.MapBuilder;
+import com.gigaspaces.k8s.operators.common.ResourcesSpec;
 import com.github.containersolutions.operator.api.Context;
 import com.github.containersolutions.operator.api.Controller;
 import com.github.containersolutions.operator.api.ResourceController;
@@ -14,6 +15,8 @@ import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Map;
 
 @Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
 public class PuController implements ResourceController<Pu> {
@@ -197,9 +200,7 @@ public class PuController implements ResourceController<Pu> {
         PuSpec spec = pu.getSpec();
         Container container = new Container();
         container.setName("pu-container");
-        container.setResources(new ResourceRequirements(
-                MapBuilder.singletonMap("memory", new Quantity("400", "Mi")),
-                MapBuilder.singletonMap("memory", new Quantity("400", "Mi"))));
+        container.setResources(getResourceRequirements(pu, partitionId));
         container.setImage(spec.getImage().toString());
         if (spec.getImage().getPullPolicy() != null)
             container.setImagePullPolicy(spec.getImage().getPullPolicy());
@@ -236,6 +237,24 @@ public class PuController implements ResourceController<Pu> {
         //container.setReadinessProbe(getReadinessProbe());
 
         return container;
+    }
+
+    private ResourceRequirements getResourceRequirements(Pu pu, int partitionId) {
+        Map<String, Quantity> limits = null;
+        Map<String, Quantity> requests = null;
+        ResourcesSpec resources = pu.getSpec().getResources();
+        if (resources != null) {
+            if (resources.getLimits() != null)
+                limits = resources.getLimits().toMap();
+            if (resources.getRequests() != null)
+                requests = resources.getRequests().toMap();
+            // TODO: support partition overrides.
+        }
+
+        if (limits == null)
+            limits = MapBuilder.singletonMap("memory", Quantity.parse("400Mi"));
+
+        return new ResourceRequirements(limits, requests);
     }
 
     private ServicePort buildServicePort() {

@@ -52,6 +52,31 @@ spec:
                     pullPolicy:
                       type: string
                       nullable: true
+                resources:
+                  type: object
+                  nullable: true
+                  properties:
+                    limits:
+                      type: object
+                      nullable: true
+                      properties:
+                        cpu:
+                          type: string
+                          nullable: true
+                        memory:
+                          type: string
+                          nullable: true
+                    requests:
+                      type: object
+                      nullable: true
+                      properties:
+                        cpu:
+                          type: string
+                          nullable: true
+                        memory:
+                          type: string
+                          nullable: true
+
       # subresources describes the subresources for custom resources.
       subresources:
         # status enables the status subresource.

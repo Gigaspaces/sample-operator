@@ -3,9 +3,16 @@ kind: ProcessingUnit
 metadata:
   name: demo
 spec: {}
+  #license: "tryme"
   #partitions: 0
   #ha: false
-  #license: "tryme"
+  #resources:
+    #limits:
+      #cpu:
+      #memory: default is 400Mi
+    #requests:
+      #cpu:
+      #memory:
   #image:
     #repository: "gigaspaces/xap-enterprise" # "gigaspaces/insightedge-enterprise"
     #tag: 15.5.1
