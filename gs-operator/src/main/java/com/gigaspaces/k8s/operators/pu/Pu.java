@@ -16,4 +16,9 @@ public class Pu extends CustomResource {
     public String getStatefulSetName(int partition) {
         return getMetadata().getName() + "-" + getSpec().getApp() + "-" + partition;
     }
+
+    public boolean isStateful() {
+        // TODO: user indication if pu is stateful or not, or different CRDs per pu type.
+        return true;
+    }
 }

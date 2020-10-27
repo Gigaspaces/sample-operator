@@ -16,6 +16,8 @@ import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
@@ -59,57 +61,25 @@ public class PuController implements ResourceController<Pu> {
     public UpdateControl<Pu> createOrUpdateResource(Pu pu, Context<Pu> context) {
         log.info("\n===> createOrUpdateResource \n" + pu);
         pu.getSpec().applyDefaults();
-        return pu.getMetadata().getGeneration() == 1 ? createResource(pu) : updateResource(pu);
-    }
-
-    private UpdateControl<Pu> createResource(Pu pu) {
-        log.info("DEBUG - creating pu {}", pu.getMetadata().getName());;
-        // TODO: create zk topology if needed.
-        PuSpec spec = pu.getSpec();
-        int partitions = spec.getPartitions();
-        int created = 0;
-        if (partitions == 0) {
-            if (createStatefulSetIfAbsent(pu, 0))
-                created++;
-        } else {
-            for (int i = 1; i <= partitions; i++) {
-                if (createStatefulSetIfAbsent(pu, i))
-                    created++;
-            }
-        }
-        return created == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
-    }
-
-    private boolean createStatefulSetIfAbsent(Pu pu, int partitionId) {
-        StatefulSet statefulSet = statefulSet(pu, partitionId).get();
-        if (statefulSet == null) {
-            createStatefulSet(pu, partitionId);
-            return true;
-        }
-        log.info("stateful set '" + statefulSet.getMetadata().getName() + "' already exists");
-        return false;
-    }
-
-    private UpdateControl<Pu> updateResource(Pu pu) {
         if (isHorizontalScale(pu)) {
             log.info("Horizontal scaling is under construction"); // TODO: implement.
             return UpdateControl.noUpdate();
-        } else {
-            log.info("DEBUG - Updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
-            PuSpec spec = pu.getSpec();
-            int partitions = spec.getPartitions();
-            int modifications = 0;
-            if (partitions == 0) {
-                if (createOrUpdateStatefulSet(pu, 0))
-                    modifications++;
-            } else {
-                for (int i = 1; i <= partitions; i++) {
-                    if (createOrUpdateStatefulSet(pu, i))
-                        modifications++;
-                }
-            }
-            return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
         }
+
+        log.info("DEBUG - Creating/updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
+        PuSpec spec = pu.getSpec();
+        int partitions = spec.getPartitions();
+        int modifications = 0;
+        if (partitions == 0) {
+            if (createOrUpdateStatefulSet(pu, 0))
+                modifications++;
+        } else {
+            for (int i = 1; i <= partitions; i++) {
+                if (createOrUpdateStatefulSet(pu, i))
+                    modifications++;
+            }
+        }
+        return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
     }
 
     private boolean createOrUpdateStatefulSet(Pu pu, int partitionId) {
@@ -117,28 +87,42 @@ public class PuController implements ResourceController<Pu> {
         if (statefulSet == null) {
             createStatefulSet(pu, partitionId);
             return true;
-        } else {
-            return updateStatefulSet(statefulSet, pu);
         }
-    }
-
-    private boolean isHorizontalScale(Pu pu) {
-        // TODO: fetch topology from zk and compare number of partitions
+        if (requiresUpdate(statefulSet, pu, partitionId)) {
+            updateStatefulSet(statefulSet, pu, partitionId);
+            return true;
+        }
         return false;
     }
 
-    private boolean updateStatefulSet(StatefulSet statefulSet, Pu pu) {
+    private boolean requiresUpdate(StatefulSet statefulSet, Pu pu, int partitionId) {
+        // TOOD: check if statefulset requires update
+        return true;
+    }
+
+    private void updateStatefulSet(StatefulSet statefulSet, Pu pu, int partitionId) {
         log.info("DEBUG - updating statefulset {} from {} to {}",
                 statefulSet.getMetadata().getName(),
                 statefulSet.getMetadata().getGeneration(),
                 pu.getMetadata().getGeneration());
-        // TODO: update stateful set.
-        /*
-        statefulSet(pu, statefulSet.getMetadata().getName()).edit()
-                ...
+        kubernetesClient.apps().statefulSets()
+                .inNamespace(statefulSet.getMetadata().getNamespace())
+                .withName(statefulSet.getMetadata().getName())
+                //.rolling()
+                .edit()
+                .editSpec()
+                .editTemplate()
+                .editSpec()
+                .editFirstContainer()
+                .withImage(pu.getSpec().getImage().toString())
+                .withResources(getResourceRequirements(pu, partitionId))
+                .withArgs(getContainerArgs(pu, partitionId))
+                .withEnv(getContainerEnvVars(pu, partitionId))
+                .endContainer()
+                .endSpec()
+                .endTemplate()
+                .endSpec()
                 .done();
-         */
-        return true;
     }
 
     private RollableScalableResource<StatefulSet, DoneableStatefulSet> statefulSet(Pu pu, int partition) {
@@ -199,44 +183,53 @@ public class PuController implements ResourceController<Pu> {
     private Container getContainer(Pu pu, int partitionId) {
         PuSpec spec = pu.getSpec();
         Container container = new Container();
+
         container.setName("pu-container");
         container.setResources(getResourceRequirements(pu, partitionId));
         container.setImage(spec.getImage().toString());
         if (spec.getImage().getPullPolicy() != null)
             container.setImagePullPolicy(spec.getImage().getPullPolicy());
-        container.setEnv(ListBuilder.singletonList(new EnvVar("GS_OPTIONS_EXT", null, null)));
-
+        container.setEnv(getContainerEnvVars(pu, partitionId));
         container.setCommand(ListBuilder.singletonList("tools/kubernetes/entrypoint.sh"));
-        ListBuilder<String> args = new ListBuilder<String>()
-                .add("component=pu")
-                .add("verbose=true")
-                .add("name=" + pu.getMetadata().getName())
-                .add("release.namespace=" + pu.getMetadata().getNamespace())
-                .add("license=" + spec.getLicense())
-                .add("java.heap=limit-150Mi")
-                .add("manager.name=" + spec.getManager().getName())
-                .add("manager.ports.api=" + spec.getManager().getPorts().getApi());
-        if (spec.getPartitions() != 0) {
-            args.add("partitions=" + spec.getPartitions()) // TODO: redundant when zk integration is done
-                .add("ha=" + spec.isHa()) // TODO: redundant when zk integration is done
-                .add("partitionId=" + partitionId);
+        container.setArgs(getContainerArgs(pu, partitionId));
+        if (pu.isStateful()) {
+            container.setLivenessProbe(createSpaceLivenessProbe());
+            container.setReadinessProbe(createSpaceReadinessProbe());
         }
 
-                /*
+        return container;
+    }
+
+    private List<EnvVar> getContainerEnvVars(Pu pu, int partitionId) {
+        return ListBuilder.singletonList(new EnvVar("GS_OPTIONS_EXT", null, null));
+    }
+
+    private List<String> getContainerArgs(Pu pu, int partitionId) {
+        PuSpec spec = pu.getSpec();
+        List<String> args = new ArrayList<>();
+        args.add("component=pu");
+        args.add("verbose=true");
+        args.add("name=" + pu.getMetadata().getName());
+        args.add("release.namespace=" + pu.getMetadata().getNamespace());
+        args.add("license=" + spec.getLicense());
+        args.add("java.heap=limit-150Mi");
+        args.add("manager.name=" + spec.getManager().getName());
+        args.add("manager.ports.api=" + spec.getManager().getPorts().getApi());
+        if (spec.getPartitions() != 0) {
+            args.add("partitions=" + spec.getPartitions()); // TODO: redundant when zk integration is done
+            args.add("ha=" + spec.isHa()); // TODO: redundant when zk integration is done
+            args.add("partitionId=" + partitionId);
+        }
+
+        /* TODO:
             {{- if ($root.Values.resourceUrl) }}
             - "pu.resourceUrl={{$root.Values.resourceUrl}}"
             {{- end }}
             {{- if ($root.Values.properties) }}
             - "pu.properties={{$root.Values.properties}}"
             {{- end }}
-                 */
-        container.setArgs(args.build());
-
-        //by default - disabled
-        //container.setLivenessProbe(buildLivenessProbe());
-        //container.setReadinessProbe(getReadinessProbe());
-
-        return container;
+        */
+        return args;
     }
 
     private ResourceRequirements getResourceRequirements(Pu pu, int partitionId) {
@@ -257,6 +250,11 @@ public class PuController implements ResourceController<Pu> {
         return new ResourceRequirements(limits, requests);
     }
 
+    private boolean isHorizontalScale(Pu pu) {
+        // TODO: fetch topology from zk and compare number of partitions
+        return false;
+    }
+
     private ServicePort buildServicePort() {
         ServicePort port = new ServicePort();
         port.setName("lrmi");
@@ -266,7 +264,7 @@ public class PuController implements ResourceController<Pu> {
         return port;
     }
 
-    private Probe buildLivenessProbe() {
+    private Probe createSpaceLivenessProbe() {
         Probe probe = new Probe();
         HTTPGetAction httpGetAction = new HTTPGetAction();
         httpGetAction.setPath("/probes/alive");
@@ -278,7 +276,7 @@ public class PuController implements ResourceController<Pu> {
         return probe;
     }
 
-    private Probe getReadinessProbe() {
+    private Probe createSpaceReadinessProbe() {
         Probe probe = new Probe();
         HTTPGetAction httpGetAction = new HTTPGetAction();
         httpGetAction.setPath("/probes/ready");
