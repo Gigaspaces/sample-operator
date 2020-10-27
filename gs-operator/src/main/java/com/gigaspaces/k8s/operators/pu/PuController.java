@@ -29,66 +29,94 @@ public class PuController implements ResourceController<Pu> {
     public boolean deleteResource(Pu pu, Context<Pu> context) {
         log.info("\n===> deleteResource \n" + pu);
 
-        PuSpec spec = pu.getSpec();
+        PuSpec spec = pu.getSpec().applyDefaults();
         int partitions = spec.getPartitions();
-        for (int i = 1; i <= partitions; i++) {
-            String name = pu.getStatefulSetName(i);
-            StatefulSet exists = statefulSet(pu, name).get();
-            if (exists == null) {
-                log.info("stateful set '" + name + "' does not exist");
-            } else {
-                Boolean delete = statefulSet(pu, name).delete();
-                log.info("Deleted (" + delete + ") StatefulSet with name " + exists.getMetadata().getName());
+        if (partitions == 0)
+            deleteStatefulSet(pu, 0);
+        else {
+            for (int i = 1; i <= partitions; i++) {
+                deleteStatefulSet(pu, i);
             }
         }
         return true;
     }
 
+    private void deleteStatefulSet(Pu pu, int partitionId) {
+        String name = pu.getStatefulSetName(partitionId);
+        StatefulSet exists = statefulSet(pu, name).get();
+        if (exists == null) {
+            log.info("stateful set '" + name + "' does not exist");
+        } else {
+            Boolean delete = statefulSet(pu, name).delete();
+            log.info("Deleted (" + delete + ") StatefulSet with name " + exists.getMetadata().getName());
+        }
+    }
+
     @Override
     public UpdateControl<Pu> createOrUpdateResource(Pu pu, Context<Pu> context) {
         log.info("\n===> createOrUpdateResource \n" + pu);
-        return pu.getMetadata().getGeneration() == 1 ? create(pu) : update(pu);
+        pu.getSpec().applyDefaults();
+        return pu.getMetadata().getGeneration() == 1 ? createResource(pu) : updateResource(pu);
     }
 
-    private UpdateControl<Pu> create(Pu pu) {
-        log.info("DEBUG - creating pu {}", pu.getMetadata().getName());
+    private UpdateControl<Pu> createResource(Pu pu) {
+        log.info("DEBUG - creating pu {}", pu.getMetadata().getName());;
         // TODO: create zk topology if needed.
         PuSpec spec = pu.getSpec();
         int partitions = spec.getPartitions();
         int created = 0;
-        for (int i = 1; i <= partitions; i++) {
-            StatefulSet statefulSet = statefulSet(pu, i).get();
-            if (statefulSet == null) {
-                createStatefulSet(pu, i);
+        if (partitions == 0) {
+            if (createStatefulSetIfAbsent(pu, 0))
                 created++;
-            } else {
-                log.info("stateful set '" + statefulSet.getMetadata().getName() + "' already exists");
+        } else {
+            for (int i = 1; i <= partitions; i++) {
+                if (createStatefulSetIfAbsent(pu, i))
+                    created++;
             }
         }
         return created == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
     }
 
-    private UpdateControl<Pu> update(Pu pu) {
+    private boolean createStatefulSetIfAbsent(Pu pu, int partitionId) {
+        StatefulSet statefulSet = statefulSet(pu, partitionId).get();
+        if (statefulSet == null) {
+            createStatefulSet(pu, partitionId);
+            return true;
+        }
+        log.info("stateful set '" + statefulSet.getMetadata().getName() + "' already exists");
+        return false;
+    }
+
+    private UpdateControl<Pu> updateResource(Pu pu) {
         if (isHorizontalScale(pu)) {
             log.info("Horizontal scaling is under construction"); // TODO: implement.
+            return UpdateControl.noUpdate();
         } else {
             log.info("DEBUG - Updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
             PuSpec spec = pu.getSpec();
             int partitions = spec.getPartitions();
             int modifications = 0;
-            for (int i = 1; i <= partitions; i++) {
-                StatefulSet statefulSet = statefulSet(pu, i).get();
-                if (statefulSet == null) {
-                    createStatefulSet(pu, i);
+            if (partitions == 0) {
+                if (createOrUpdateStatefulSet(pu, 0))
                     modifications++;
-                } else {
-                    if (updateStatefulSet(statefulSet, pu))
+            } else {
+                for (int i = 1; i <= partitions; i++) {
+                    if (createOrUpdateStatefulSet(pu, i))
                         modifications++;
                 }
             }
             return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
         }
-        return null;
+    }
+
+    private boolean createOrUpdateStatefulSet(Pu pu, int partitionId) {
+        StatefulSet statefulSet = statefulSet(pu, partitionId).get();
+        if (statefulSet == null) {
+            createStatefulSet(pu, partitionId);
+            return true;
+        } else {
+            return updateStatefulSet(statefulSet, pu);
+        }
     }
 
     private boolean isHorizontalScale(Pu pu) {
@@ -172,22 +200,27 @@ public class PuController implements ResourceController<Pu> {
         container.setResources(new ResourceRequirements(
                 MapBuilder.singletonMap("memory", new Quantity("400", "Mi")),
                 MapBuilder.singletonMap("memory", new Quantity("400", "Mi"))));
-        container.setImage(spec.getImage());
+        container.setImage(spec.getImage().toString());
+        if (spec.getImage().getPullPolicy() != null)
+            container.setImagePullPolicy(spec.getImage().getPullPolicy());
         container.setEnv(ListBuilder.singletonList(new EnvVar("GS_OPTIONS_EXT", null, null)));
 
         container.setCommand(ListBuilder.singletonList("tools/kubernetes/entrypoint.sh"));
-        container.setArgs(new ListBuilder<String>()
+        ListBuilder<String> args = new ListBuilder<String>()
                 .add("component=pu")
                 .add("verbose=true")
                 .add("name=" + pu.getMetadata().getName())
                 .add("release.namespace=" + pu.getMetadata().getNamespace())
                 .add("license=" + spec.getLicense())
-                .add("partitions=" + spec.getPartitions()) // TODO: redundant when zk integration is done
-                .add("ha=" + spec.isHa()) // TODO: redundant when zk integration is done
-                .add("partitionId=" + partitionId)
                 .add("java.heap=limit-150Mi")
                 .add("manager.name=" + spec.getManagerName())
-                .add("manager.ports.api=" + spec.getManagerApiPort())
+                .add("manager.ports.api=" + spec.getManagerApiPort());
+        if (spec.getPartitions() != 0) {
+            args.add("partitions=" + spec.getPartitions()) // TODO: redundant when zk integration is done
+                .add("ha=" + spec.isHa()) // TODO: redundant when zk integration is done
+                .add("partitionId=" + partitionId);
+        }
+
                 /*
             {{- if ($root.Values.resourceUrl) }}
             - "pu.resourceUrl={{$root.Values.resourceUrl}}"
@@ -196,7 +229,7 @@ public class PuController implements ResourceController<Pu> {
             - "pu.properties={{$root.Values.properties}}"
             {{- end }}
                  */
-                .build());
+        container.setArgs(args.build());
 
         //by default - disabled
         //container.setLivenessProbe(buildLivenessProbe());

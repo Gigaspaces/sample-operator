@@ -2,7 +2,11 @@ apiVersion: "gigaspaces.com/v1"
 kind: ProcessingUnit
 metadata:
   name: demo
-spec:
+spec: {}
+  #partitions: 0
+  #ha: false
   #license: "tryme"
-  partitions: 1
-  ha: false
+  #image:
+    #repository: "gigaspaces/xap-enterprise" # "gigaspaces/insightedge-enterprise"
+    #tag: 15.5.1
+    #pullPolicy: "IfNotPresent" # "Always"

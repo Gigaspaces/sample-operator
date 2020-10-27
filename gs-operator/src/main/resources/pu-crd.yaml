@@ -6,6 +6,18 @@ metadata:
 spec:
   # group name to use for REST API: /apis/<group>/<version>
   group: gigaspaces.com
+  # either Namespaced or Cluster
+  scope: Namespaced
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: pus
+    # singular name to be used as an alias on the CLI and for display
+    singular: pu
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: ProcessingUnit
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - pu
   versions:
     - name: v1
       # Each version can be enabled/disabled by Served flag.
@@ -24,34 +36,23 @@ spec:
                   default: "tryme"
                 partitions:
                   type: integer
-                  default: 1
                 ha:
                   type: boolean
-                  default: false
+                image:
+                  type: object
+                  nullable: true
+                  required:
+                  - tag
+                  properties:
+                    repository:
+                      type: string
+                      nullable: true # if not set, default value is set by operator to insightedge or xap repo.
+                    tag:
+                      type: string
+                    pullPolicy:
+                      type: string
+                      nullable: true
       # subresources describes the subresources for custom resources.
       subresources:
         # status enables the status subresource.
         status: {}
-  # either Namespaced or Cluster
-  scope: Namespaced
-  names:
-    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: pus
-    # singular name to be used as an alias on the CLI and for display
-    singular: pu
-    # kind is normally the CamelCased singular type. Your resource manifests use this.
-    kind: ProcessingUnit
-    # shortNames allow shorter string to match your resource on the CLI
-    shortNames:
-    - pu
-#  validation:
-#    openAPIV3Schema:
-#      type: object
-#      properties:
-#        spec:
-#          type: object
-#          required:
-#            - encoding
-#          properties:
-#            encoding:
-#              type: string

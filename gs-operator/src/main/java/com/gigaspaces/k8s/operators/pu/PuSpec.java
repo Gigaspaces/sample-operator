@@ -1,11 +1,20 @@
 package com.gigaspaces.k8s.operators.pu;
 
 import com.gigaspaces.k8s.operators.ProductInfo;
+import com.gigaspaces.k8s.operators.common.ImageSpec;
 
 public class PuSpec {
+    private ImageSpec image;
     private String license;
     private int partitions;
     private boolean ha;
+
+    public PuSpec applyDefaults() {
+        if (image == null)
+            image = new ImageSpec();
+        image.applyDefaults();
+        return this;
+    }
 
     public String getLicense() {
         return license;
@@ -28,9 +37,11 @@ public class PuSpec {
         this.ha = ha;
     }
 
-    public String getImage() {
-        // TODO: Configurable
-        return "gigaspaces/" + ProductInfo.instance().getProductName() + "-enterprise:" + ProductInfo.instance().getVersion();
+    public ImageSpec getImage() {
+        return image;
+    }
+    public void setImage(ImageSpec image) {
+        this.image = image;
     }
 
     public String getApp() {
