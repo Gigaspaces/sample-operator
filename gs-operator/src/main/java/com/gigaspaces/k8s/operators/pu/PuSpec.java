@@ -7,6 +7,7 @@ import com.gigaspaces.k8s.operators.common.ResourcesSpec;
 public class PuSpec {
     private ImageSpec image;
     private ResourcesSpec resources;
+    private ManagerSpec manager;
     private String license;
     private int partitions;
     private boolean ha;
@@ -15,6 +16,9 @@ public class PuSpec {
         if (image == null)
             image = new ImageSpec();
         image.applyDefaults();
+        if (manager == null)
+            manager = new ManagerSpec();
+        manager.applyDefaults();
         return this;
     }
 
@@ -50,21 +54,19 @@ public class PuSpec {
         return ProductInfo.instance().getProductName() + "-pu";
     }
 
-    public String getManagerName() {
-        // TODO: Configurable
-        return "hello";
-    }
-
-    public int getManagerApiPort() {
-        // TODO: Configurable
-        return 8090;
-    }
-
     public ResourcesSpec getResources() {
         return resources;
     }
 
     public void setResources(ResourcesSpec resources) {
         this.resources = resources;
+    }
+
+    public ManagerSpec getManager() {
+        return manager;
+    }
+
+    public void setManager(ManagerSpec manager) {
+        this.manager = manager;
     }
 }

@@ -17,3 +17,8 @@ spec: {}
     #repository: "gigaspaces/xap-enterprise" # "gigaspaces/insightedge-enterprise"
     #tag: 15.5.1
     #pullPolicy: "IfNotPresent" # "Always"
+  #manager:
+    #name: hello
+    #ports:
+      #api: 8090
+    #discoveryTimeoutSeconds: 60

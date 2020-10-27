@@ -214,8 +214,8 @@ public class PuController implements ResourceController<Pu> {
                 .add("release.namespace=" + pu.getMetadata().getNamespace())
                 .add("license=" + spec.getLicense())
                 .add("java.heap=limit-150Mi")
-                .add("manager.name=" + spec.getManagerName())
-                .add("manager.ports.api=" + spec.getManagerApiPort());
+                .add("manager.name=" + spec.getManager().getName())
+                .add("manager.ports.api=" + spec.getManager().getPorts().getApi());
         if (spec.getPartitions() != 0) {
             args.add("partitions=" + spec.getPartitions()) // TODO: redundant when zk integration is done
                 .add("ha=" + spec.isHa()) // TODO: redundant when zk integration is done

@@ -76,6 +76,24 @@ spec:
                         memory:
                           type: string
                           nullable: true
+                manager:
+                  type: object
+                  nullable: true
+                  properties:
+                    name:
+                      type: string
+                      nullable: true
+                    ports:
+                      type: object
+                      nullable: true
+                      properties:
+                        api:
+                          type: integer
+                          default: 8090
+                    discoveryTimeoutSeconds:
+                      type: integer
+                      default: 60
+
 
       # subresources describes the subresources for custom resources.
       subresources:
