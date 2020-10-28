@@ -4,9 +4,12 @@ import com.gigaspaces.k8s.operators.ProductInfo;
 import com.gigaspaces.k8s.operators.common.ImageSpec;
 import com.gigaspaces.k8s.operators.common.ResourcesSpec;
 
+import java.util.List;
+import java.util.Objects;
+
 public class PuSpec {
     private ImageSpec image;
-    private ResourcesSpec resources;
+    private List<ResourcesSpec> resources;
     private ManagerSpec manager;
     private String license;
     private int partitions;
@@ -54,12 +57,22 @@ public class PuSpec {
         return ProductInfo.instance().getProductName() + "-pu";
     }
 
-    public ResourcesSpec getResources() {
+    public List<ResourcesSpec> getResources() {
         return resources;
     }
 
-    public void setResources(ResourcesSpec resources) {
+    public void setResources(List<ResourcesSpec> resources) {
         this.resources = resources;
+    }
+
+    public ResourcesSpec getResources(Integer id) {
+        if (resources != null) {
+            for (ResourcesSpec resource : resources) {
+                if (Objects.equals(id, resource.getId()))
+                    return resource;
+            }
+        }
+        return null;
     }
 
     public ManagerSpec getManager() {

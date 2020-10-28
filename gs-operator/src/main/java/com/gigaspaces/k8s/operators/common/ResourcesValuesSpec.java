@@ -9,6 +9,17 @@ public class ResourcesValuesSpec {
     private String cpu;
     private String memory;
 
+    public static ResourcesValuesSpec merge(ResourcesValuesSpec partitionSpec, ResourcesValuesSpec defaultSpec) {
+        if (partitionSpec == null)
+            return defaultSpec;
+        if (defaultSpec == null)
+            return partitionSpec;
+        ResourcesValuesSpec result = new ResourcesValuesSpec();
+        result.cpu = partitionSpec.cpu != null ? partitionSpec.cpu : defaultSpec.cpu;
+        result.memory = partitionSpec.memory != null ? partitionSpec.memory : defaultSpec.memory;
+        return result;
+    }
+
     public String getCpu() {
         return cpu;
     }

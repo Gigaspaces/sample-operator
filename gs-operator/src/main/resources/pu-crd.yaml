@@ -53,29 +53,34 @@ spec:
                       type: string
                       nullable: true
                 resources:
-                  type: object
+                  type: array
                   nullable: true
-                  properties:
-                    limits:
-                      type: object
-                      nullable: true
-                      properties:
-                        cpu:
-                          type: string
-                          nullable: true
-                        memory:
-                          type: string
-                          nullable: true
-                    requests:
-                      type: object
-                      nullable: true
-                      properties:
-                        cpu:
-                          type: string
-                          nullable: true
-                        memory:
-                          type: string
-                          nullable: true
+                  items:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        nullable: true
+                      limits:
+                        type: object
+                        nullable: true
+                        properties:
+                          cpu:
+                            type: string
+                            nullable: true
+                          memory:
+                            type: string
+                            nullable: true
+                      requests:
+                        type: object
+                        nullable: true
+                        properties:
+                          cpu:
+                            type: string
+                            nullable: true
+                          memory:
+                            type: string
+                            nullable: true
                 manager:
                   type: object
                   nullable: true

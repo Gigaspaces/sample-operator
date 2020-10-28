@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 
 @Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
 public class PuController implements ResourceController<Pu> {
@@ -88,24 +89,11 @@ public class PuController implements ResourceController<Pu> {
             createStatefulSet(pu, partitionId);
             return true;
         }
-        if (requiresUpdate(statefulSet, pu, partitionId)) {
-            updateStatefulSet(statefulSet, pu, partitionId);
-            return true;
-        }
-        return false;
+        return updateStatefulSet(statefulSet, pu, partitionId);
     }
 
-    private boolean requiresUpdate(StatefulSet statefulSet, Pu pu, int partitionId) {
-        // TOOD: check if statefulset requires update
-        return true;
-    }
-
-    private void updateStatefulSet(StatefulSet statefulSet, Pu pu, int partitionId) {
-        log.info("DEBUG - updating statefulset {} from {} to {}",
-                statefulSet.getMetadata().getName(),
-                statefulSet.getMetadata().getGeneration(),
-                pu.getMetadata().getGeneration());
-        kubernetesClient.apps().statefulSets()
+    private boolean updateStatefulSet(StatefulSet statefulSet, Pu pu, int partitionId) {
+        StatefulSet updated = kubernetesClient.apps().statefulSets()
                 .inNamespace(statefulSet.getMetadata().getNamespace())
                 .withName(statefulSet.getMetadata().getName())
                 //.rolling()
@@ -115,7 +103,7 @@ public class PuController implements ResourceController<Pu> {
                 .editSpec()
                 .editFirstContainer()
                 .withImage(pu.getSpec().getImage().toString())
-                .withResources(getResourceRequirements(pu, partitionId))
+                .withResources(getResourceRequirements(pu.getSpec(), partitionId))
                 .withArgs(getContainerArgs(pu, partitionId))
                 .withEnv(getContainerEnvVars(pu, partitionId))
                 .endContainer()
@@ -123,6 +111,9 @@ public class PuController implements ResourceController<Pu> {
                 .endTemplate()
                 .endSpec()
                 .done();
+        boolean result = updated.getMetadata().getGeneration() > statefulSet.getMetadata().getGeneration();
+        log.info("DEBUG - partition: {} updated={}, orig gen: {}, new gen: {}", partitionId, result, statefulSet.getMetadata().getGeneration(), updated.getMetadata().getGeneration());
+        return result;
     }
 
     private RollableScalableResource<StatefulSet, DoneableStatefulSet> statefulSet(Pu pu, int partition) {
@@ -185,7 +176,7 @@ public class PuController implements ResourceController<Pu> {
         Container container = new Container();
 
         container.setName("pu-container");
-        container.setResources(getResourceRequirements(pu, partitionId));
+        container.setResources(getResourceRequirements(spec, partitionId));
         container.setImage(spec.getImage().toString());
         if (spec.getImage().getPullPolicy() != null)
             container.setImagePullPolicy(spec.getImage().getPullPolicy());
@@ -232,16 +223,26 @@ public class PuController implements ResourceController<Pu> {
         return args;
     }
 
-    private ResourceRequirements getResourceRequirements(Pu pu, int partitionId) {
+    private ResourceRequirements getResourceRequirements(PuSpec spec, int partitionId) {
         Map<String, Quantity> limits = null;
         Map<String, Quantity> requests = null;
-        ResourcesSpec resources = pu.getSpec().getResources();
+        List<ResourcesSpec> resourcesList = spec.getResources();
+        if (resourcesList == null) {
+            log.info("resourcesList is null");
+        } else {
+            StringJoiner sj = new StringJoiner(", ", "IDs: [","]");
+            resourcesList.forEach(rs -> sj.add(String.valueOf(rs.getId())));
+            log.info("resourcesList.size is {}, {}", resourcesList.size(), sj.toString());
+        }
+        ResourcesSpec defaultResources = spec.getResources(null);
+        ResourcesSpec partitionResources = spec.getResources(partitionId);
+        ResourcesSpec resources = ResourcesSpec.merge(partitionResources, defaultResources);
+
         if (resources != null) {
             if (resources.getLimits() != null)
                 limits = resources.getLimits().toMap();
             if (resources.getRequests() != null)
                 requests = resources.getRequests().toMap();
-            // TODO: support partition overrides.
         }
 
         if (limits == null)

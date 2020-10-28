@@ -7,12 +7,13 @@ spec: {}
   #partitions: 0
   #ha: false
   #resources:
+  #- id: null or partiton id
     #limits:
       #cpu:
       #memory: default is 400Mi
-    #requests:
-      #cpu:
-      #memory:
+      #requests:
+        #cpu:
+        #memory:
   #image:
     #repository: "gigaspaces/xap-enterprise" # "gigaspaces/insightedge-enterprise"
     #tag: 15.5.1
