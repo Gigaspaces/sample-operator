@@ -14,6 +14,9 @@ howto run?
 # manager 
 - helm install hello xap-manager --set service.type="NodePort",service.api.nodePort=30890
 
+# Connect to ops-ui
+- minikube service --url hello-xap-manager-service
+
 # pu - just to check everything is working
 - helm install world xap-pu --set manager.name=hello
 - helm del world --keep-history
@@ -24,6 +27,10 @@ $HOME = /Users/meron/Work/minikube/sample-operator
 
 # apply the custom resource definition
 - kubectl apply -f $HOME/gs-operator/src/main/resources/pu-crd.yaml
+
+# create cluster Role Binding
+- kubectl create clusterrolebinding default --clusterrole cluster-admin --serviceaccount=default:default
+
 
 # run the operator externally
 - mvn exec:java -Dexec.mainClass=com.gigaspaces.k8s.operators.DevOperator
