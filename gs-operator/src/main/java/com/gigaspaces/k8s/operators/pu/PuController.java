@@ -245,8 +245,12 @@ public class PuController implements ResourceController<Pu> {
                 requests = resources.getRequests().toMap();
         }
 
-        if (limits == null)
+        if (limits == null){
             limits = MapBuilder.singletonMap("memory", Quantity.parse("400Mi"));
+            limits.put("cpu", Quantity.parse("1000m"));
+        }
+        log.info("limits: " + limits);
+
 
         return new ResourceRequirements(limits, requests);
     }
