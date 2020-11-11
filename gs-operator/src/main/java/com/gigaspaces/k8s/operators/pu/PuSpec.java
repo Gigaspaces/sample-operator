@@ -12,6 +12,7 @@ public class PuSpec {
     private List<ResourcesSpec> resources;
     private ManagerSpec manager;
     private String license;
+    private String resourceUrl;
     private int partitions;
     private boolean ha;
 
@@ -30,6 +31,12 @@ public class PuSpec {
     }
     public void setLicense(String license) {
         this.license = license;
+    }
+    public String getResourceUrl() {
+        return resourceUrl;
+    }
+    public void setResourceUrl(String resourceUrl) {
+        this.resourceUrl = resourceUrl;
     }
 
     public int getPartitions() {

@@ -38,6 +38,9 @@ spec:
                   type: integer
                 ha:
                   type: boolean
+                resourceUrl:
+                  type: string
+                  nullable: true
                 image:
                   type: object
                   nullable: true
