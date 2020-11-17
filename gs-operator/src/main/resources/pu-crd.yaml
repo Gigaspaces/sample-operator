@@ -36,8 +36,15 @@ spec:
                   default: "tryme"
                 partitions:
                   type: integer
+                  nullable: true
+                  default: null
+                instances:
+                  type: integer
+                  nullable: true
+                  default: null
                 ha:
                   type: boolean
+                  nullable: true
                 resourceUrl:
                   type: string
                   nullable: true

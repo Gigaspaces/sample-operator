@@ -69,27 +69,36 @@ public class PuController implements ResourceController<Pu> {
 
         log.info("DEBUG - Creating/updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
         PuSpec spec = pu.getSpec();
-        int partitions = spec.getPartitions();
         int modifications = 0;
-        if (partitions == 0) {
-            if (createOrUpdateStatefulSet(pu, 0))
+
+        //TODO: change partitionId TO statefulSetId
+        if (!pu.isStateful()) {
+            if (createOrUpdateStatefulSet(pu, 1)) {
                 modifications++;
+            }
         } else {
-            for (int i = 1; i <= partitions; i++) {
-                if (createOrUpdateStatefulSet(pu, i))
+            int partitions = spec.getPartitions();
+            if (partitions == 0) {
+                if (createOrUpdateStatefulSet(pu, 0)) {
                     modifications++;
+                }
+            } else {
+                for (int i = 1; i <= partitions; i++) {
+                    if (createOrUpdateStatefulSet(pu, i))
+                        modifications++;
+                }
             }
         }
         return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
     }
 
-    private boolean createOrUpdateStatefulSet(Pu pu, int partitionId) {
-        StatefulSet statefulSet = statefulSet(pu, partitionId).get();
+    private boolean createOrUpdateStatefulSet(Pu pu, int statefulSetId) {
+        StatefulSet statefulSet = statefulSet(pu, statefulSetId).get();
         if (statefulSet == null) {
-            createStatefulSet(pu, partitionId);
+            createStatefulSet(pu, statefulSetId);
             return true;
         }
-        return updateStatefulSet(statefulSet, pu, partitionId);
+        return updateStatefulSet(statefulSet, pu, statefulSetId);
     }
 
     private boolean updateStatefulSet(StatefulSet statefulSet, Pu pu, int partitionId) {
@@ -130,26 +139,32 @@ public class PuController implements ResourceController<Pu> {
         String name = pu.getStatefulSetName(partition);
         String namespace = pu.getMetadata().getNamespace();
         log.info("DEBUG - Creating statefulset {} with generation {}", name, pu.getMetadata().getGeneration());
-
         PuSpec spec = pu.getSpec();
+        int replicas = 0;
+        if (pu.isStateful()) {
+            replicas = spec.isHa() ? 2 : 1;
+        } else {
+            replicas = spec.getInstances();
+        }
+
         StatefulSetBuilder statefulSet = new StatefulSetBuilder();
         statefulSet.withNewMetadata()
                 .withNamespace(namespace)
                 .withName(name)
-                .withLabels(new MapBuilder<String,String>()
+                .withLabels(new MapBuilder<String, String>()
                         .put("app", spec.getApp())
                         .put("release", pu.getMetadata().getName())
                         .build())
                 .endMetadata();
         statefulSet.withNewSpec()
-                .withReplicas(spec.isHa() ? 2 : 1)
+                .withReplicas(replicas)
                 .withServiceName(spec.getApp())
                 .withNewSelector()
                 .withMatchLabels(MapBuilder.singletonMap("selectorId", name))
                 .endSelector()
                 .withNewTemplate()
                 .withNewMetadata()
-                .withLabels(new MapBuilder<String,String>()
+                .withLabels(new MapBuilder<String, String>()
                         .put("app", spec.getApp())
                         .put("release", pu.getMetadata().getName())
                         .put("component", "space")
@@ -158,8 +173,8 @@ public class PuController implements ResourceController<Pu> {
                         .build())
                 .endMetadata()
                 .withNewSpec()
-                //.withNewAffinity() //TODO
                 .withRestartPolicy("Always")
+//                .withAffinity(new Affinity(null, null, buildAntiAffinity(name)))
                 .withTerminationGracePeriodSeconds(30L)
                 .withContainers(getContainer(pu, partition))
                 .endSpec()
@@ -169,6 +184,23 @@ public class PuController implements ResourceController<Pu> {
         StatefulSet item = statefulSet.build();
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
+    }
+
+
+    private PodAntiAffinity buildAntiAffinity(String name){
+        List<LabelSelectorRequirement> matchExpressions = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        values.add(name);
+        LabelSelectorRequirement labelSelectorRequirement = new LabelSelectorRequirement("selectorId", "In",values );
+        matchExpressions.add(labelSelectorRequirement);
+        LabelSelector labelSelector = new LabelSelector(matchExpressions, null);
+
+
+        PodAffinityTerm podAffinityTerm = new PodAffinityTerm(labelSelector, null , "kubernetes.io/hostname");
+
+        List<PodAffinityTerm> requiredDuringSchedulingIgnoredDuringExecution = new ArrayList<>();
+        requiredDuringSchedulingIgnoredDuringExecution.add(podAffinityTerm);
+        return new PodAntiAffinity (null,requiredDuringSchedulingIgnoredDuringExecution );
     }
 
     private Container getContainer(Pu pu, int partitionId) {
@@ -206,13 +238,15 @@ public class PuController implements ResourceController<Pu> {
         args.add("java.heap=limit-150Mi");
         args.add("manager.name=" + spec.getManager().getName());
         args.add("manager.ports.api=" + spec.getManager().getPorts().getApi());
-        if ( spec.getResourceUrl() != null){
+        if (spec.getResourceUrl() != null) {
             args.add("pu.resourceUrl=" + spec.getResourceUrl());
         }
-        if (spec.getPartitions() != 0) {
+        if (pu.isStateful()) {
             args.add("partitions=" + spec.getPartitions()); // TODO: redundant when zk integration is done
             args.add("ha=" + spec.isHa()); // TODO: redundant when zk integration is done
             args.add("partitionId=" + partitionId);
+        } else {
+            args.add("instances=" + spec.getInstances());
         }
 
         /* TODO:
@@ -249,8 +283,10 @@ public class PuController implements ResourceController<Pu> {
         }
 
         if (limits == null){
-            limits = MapBuilder.singletonMap("memory", Quantity.parse("400Mi"));
-            limits.put("cpu", Quantity.parse("1000m"));
+            limits = new MapBuilder<String, Quantity>()
+                    .put("memory", Quantity.parse("400Mi"))
+                    .put("cpu", Quantity.parse("1000m"))
+                    .build();
         }
         log.info("limits: " + limits);
 

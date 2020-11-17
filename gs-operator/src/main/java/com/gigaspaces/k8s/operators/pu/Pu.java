@@ -14,11 +14,17 @@ public class Pu extends CustomResource {
     }
 
     public String getStatefulSetName(int partition) {
-        return getMetadata().getName() + "-" + getSpec().getApp() + "-" + partition;
+        if (isStateful() && spec.getPartitions() != 0) {
+            return getMetadata().getName() + "-" + getSpec().getApp() + "-" + partition;
+        }
+        return getMetadata().getName() + "-" + getSpec().getApp();
     }
 
     public boolean isStateful() {
-        // TODO: user indication if pu is stateful or not, or different CRDs per pu type.
-        return true;
+        Integer partitions = spec.getPartitions();
+        Integer instances = spec.getInstances();
+        if (partitions!= null && partitions > 0)
+            return true;
+        else return partitions != null && partitions == 0 && (instances == null || instances == 0);
     }
 }

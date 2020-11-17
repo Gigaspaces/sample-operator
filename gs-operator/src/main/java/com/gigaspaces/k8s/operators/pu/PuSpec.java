@@ -13,7 +13,8 @@ public class PuSpec {
     private ManagerSpec manager;
     private String license;
     private String resourceUrl;
-    private int partitions;
+    private Integer partitions;
+    private Integer instances;
     private boolean ha;
 
     public PuSpec applyDefaults() {
@@ -39,11 +40,17 @@ public class PuSpec {
         this.resourceUrl = resourceUrl;
     }
 
-    public int getPartitions() {
+    public Integer getPartitions() {
         return partitions;
     }
     public void setPartitions(int partitions) {
         this.partitions = partitions;
+    }
+    public Integer getInstances() {
+        return instances;
+    }
+    public void setInstances(int instances) {
+        this.instances = instances;
     }
 
     public boolean isHa() {

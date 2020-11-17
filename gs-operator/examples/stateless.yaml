@@ -1,0 +1,26 @@
+apiVersion: "gigaspaces.com/v1"
+kind: ProcessingUnit
+metadata:
+  name: feeder1
+spec:
+  license: "tryme"
+  instances: 3
+  partitions: null
+  resourceUrl: http://192.168.49.2:30890/v2/resources/data-feeder.jar
+  resources:
+  - id: null
+    limits:
+      memory: 400Mi
+        #requests:
+        #cpu:
+      #memory:
+      #image:
+      #  resourceUrl: "http://192.168.49.2:30890/v2/resources/data-processor.jar"
+      #repository: "gigaspaces/xap-enterprise" # "gigaspaces/insightedge-enterprise"
+    #tag: 15.5.1
+    #pullPolicy: "IfNotPresent" # "Always"
+  #manager:
+    #name: hello
+    #ports:
+      #api: 8090
+    #discoveryTimeoutSeconds: 60
