@@ -16,6 +16,7 @@ public class PuSpec {
     private Integer partitions;
     private Integer instances;
     private boolean ha;
+    private boolean antiAffinity;
 
     public PuSpec applyDefaults() {
         if (image == null)
@@ -58,6 +59,12 @@ public class PuSpec {
     }
     public void setHa(boolean ha) {
         this.ha = ha;
+    }
+    public boolean isAntiAffinity() {
+        return antiAffinity;
+    }
+    public void setAntiAffinity(boolean antiAffinity) {
+        this.antiAffinity = antiAffinity;
     }
 
     public ImageSpec getImage() {

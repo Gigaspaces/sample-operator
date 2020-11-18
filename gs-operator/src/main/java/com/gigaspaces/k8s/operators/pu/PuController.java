@@ -174,7 +174,7 @@ public class PuController implements ResourceController<Pu> {
                 .endMetadata()
                 .withNewSpec()
                 .withRestartPolicy("Always")
-//                .withAffinity(new Affinity(null, null, buildAntiAffinity(name)))
+                .withAffinity(addAntiAffinity(spec.isAntiAffinity(), name))
                 .withTerminationGracePeriodSeconds(30L)
                 .withContainers(getContainer(pu, partition))
                 .endSpec()
@@ -187,21 +187,25 @@ public class PuController implements ResourceController<Pu> {
     }
 
 
-    private PodAntiAffinity buildAntiAffinity(String name){
+    private Affinity addAntiAffinity(boolean isAntiAffinity, String name) {
+        if (isAntiAffinity)
+            return new Affinity(null, null, buildAntiAffinity(name));
+        return null;
+    }
+
+    private PodAntiAffinity buildAntiAffinity(String name) {
         List<LabelSelectorRequirement> matchExpressions = new ArrayList<>();
         List<String> values = new ArrayList<>();
         values.add(name);
-        LabelSelectorRequirement labelSelectorRequirement = new LabelSelectorRequirement("selectorId", "In",values );
+        LabelSelectorRequirement labelSelectorRequirement = new LabelSelectorRequirement("selectorId", "In", values);
         matchExpressions.add(labelSelectorRequirement);
         LabelSelector labelSelector = new LabelSelector(matchExpressions, null);
-
-
-        PodAffinityTerm podAffinityTerm = new PodAffinityTerm(labelSelector, null , "kubernetes.io/hostname");
-
+        PodAffinityTerm podAffinityTerm = new PodAffinityTerm(labelSelector, null, "kubernetes.io/hostname");
         List<PodAffinityTerm> requiredDuringSchedulingIgnoredDuringExecution = new ArrayList<>();
         requiredDuringSchedulingIgnoredDuringExecution.add(podAffinityTerm);
-        return new PodAntiAffinity (null,requiredDuringSchedulingIgnoredDuringExecution );
+        return new PodAntiAffinity(null, requiredDuringSchedulingIgnoredDuringExecution);
     }
+
 
     private Container getContainer(Pu pu, int partitionId) {
         PuSpec spec = pu.getSpec();
@@ -267,7 +271,7 @@ public class PuController implements ResourceController<Pu> {
         if (resourcesList == null) {
             log.info("resourcesList is null");
         } else {
-            StringJoiner sj = new StringJoiner(", ", "IDs: [","]");
+            StringJoiner sj = new StringJoiner(", ", "IDs: [", "]");
             resourcesList.forEach(rs -> sj.add(String.valueOf(rs.getId())));
             log.info("resourcesList.size is {}, {}", resourcesList.size(), sj.toString());
         }
@@ -282,7 +286,7 @@ public class PuController implements ResourceController<Pu> {
                 requests = resources.getRequests().toMap();
         }
 
-        if (limits == null){
+        if (limits == null) {
             limits = new MapBuilder<String, Quantity>()
                     .put("memory", Quantity.parse("400Mi"))
                     .put("cpu", Quantity.parse("1000m"))

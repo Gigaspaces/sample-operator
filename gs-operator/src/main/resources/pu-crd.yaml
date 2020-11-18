@@ -45,6 +45,10 @@ spec:
                 ha:
                   type: boolean
                   nullable: true
+                antiAffinity:
+                  type: boolean
+                  nullable: true
+                  default: false
                 resourceUrl:
                   type: string
                   nullable: true
@@ -108,7 +112,6 @@ spec:
                     discoveryTimeoutSeconds:
                       type: integer
                       default: 60
-
 
       # subresources describes the subresources for custom resources.
       subresources:
