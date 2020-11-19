@@ -22,6 +22,15 @@ public class PuSpec {
     private String properties;
     private ProbeSpec readinessProbe;
     private ProbeSpec livenessProbe;
+    private String javaHeap;
+
+    public String getJavaHeap() {
+        return javaHeap;
+    }
+
+    public void setJavaHeap(String javaHeap) {
+        this.javaHeap = javaHeap;
+    }
 
 
     public ProbeSpec getReadinessProbe() {

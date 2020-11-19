@@ -55,6 +55,9 @@ spec:
                 resourceUrl:
                   type: string
                   nullable: true
+                javaHeap:
+                  type: string
+                  default: "limit-150Mi"
                 readinessProbe:
                   type: object
                   nullable: true

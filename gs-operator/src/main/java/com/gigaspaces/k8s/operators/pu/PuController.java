@@ -240,7 +240,7 @@ public class PuController implements ResourceController<Pu> {
         args.add("name=" + pu.getMetadata().getName());
         args.add("release.namespace=" + pu.getMetadata().getNamespace());
         args.add("license=" + spec.getLicense());
-        args.add("java.heap=limit-150Mi");
+        args.add("java.heap=" + spec.getJavaHeap());
         args.add("manager.name=" + spec.getManager().getName());
         args.add("manager.ports.api=" + spec.getManager().getPorts().getApi());
         if (spec.getResourceUrl() != null) {
