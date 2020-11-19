@@ -55,6 +55,38 @@ spec:
                 resourceUrl:
                   type: string
                   nullable: true
+                readinessProbe:
+                  type: object
+                  nullable: true
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                    initialDelaySeconds:
+                      type: integer
+                      default: 30
+                    periodSeconds:
+                      type: integer
+                      default: 5
+                    failureThreshold:
+                      type: integer
+                      default: 3
+                livenessProbe:
+                  type: object
+                  nullable: true
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                    initialDelaySeconds:
+                      type: integer
+                      default: 30
+                    periodSeconds:
+                      type: integer
+                      default: 5
+                    failureThreshold:
+                      type: integer
+                      default: 3
                 image:
                   type: object
                   nullable: true

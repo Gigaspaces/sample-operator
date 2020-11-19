@@ -2,7 +2,9 @@ package com.gigaspaces.k8s.operators.pu;
 
 import com.gigaspaces.k8s.operators.ProductInfo;
 import com.gigaspaces.k8s.operators.common.ImageSpec;
+import com.gigaspaces.k8s.operators.common.ProbeSpec;
 import com.gigaspaces.k8s.operators.common.ResourcesSpec;
+import io.fabric8.kubernetes.api.model.Probe;
 
 import java.util.List;
 import java.util.Objects;
@@ -18,6 +20,27 @@ public class PuSpec {
     private boolean ha;
     private boolean antiAffinity;
     private String properties;
+    private ProbeSpec readinessProbe;
+    private ProbeSpec livenessProbe;
+
+
+    public ProbeSpec getReadinessProbe() {
+        return readinessProbe;
+    }
+
+    public void setReadinessProbe(ProbeSpec readinessProbe) {
+        this.readinessProbe = readinessProbe;
+    }
+
+    public ProbeSpec getLivenessProbe() {
+        return livenessProbe;
+    }
+
+    public void setLivenessProbe(ProbeSpec livenessProbe) {
+        this.livenessProbe = livenessProbe;
+    }
+
+
 
     public PuSpec applyDefaults() {
         if (image == null)

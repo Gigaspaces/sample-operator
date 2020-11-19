@@ -2,6 +2,7 @@ package com.gigaspaces.k8s.operators.pu;
 
 import com.gigaspaces.k8s.operators.ListBuilder;
 import com.gigaspaces.k8s.operators.MapBuilder;
+import com.gigaspaces.k8s.operators.common.ProbeSpec;
 import com.gigaspaces.k8s.operators.common.ResourcesSpec;
 import com.github.containersolutions.operator.api.Context;
 import com.github.containersolutions.operator.api.Controller;
@@ -216,8 +217,12 @@ public class PuController implements ResourceController<Pu> {
         container.setCommand(ListBuilder.singletonList("tools/kubernetes/entrypoint.sh"));
         container.setArgs(getContainerArgs(pu, partitionId));
         if (pu.isStateful()) {
-            container.setLivenessProbe(createSpaceLivenessProbe());
-            container.setReadinessProbe(createSpaceReadinessProbe());
+            ProbeSpec livenessProbe = spec.getLivenessProbe();
+            if (livenessProbe != null && livenessProbe.getEnabled())
+                    container.setLivenessProbe(createSpaceLivenessProbe(livenessProbe));
+            ProbeSpec readinessProbe = spec.getReadinessProbe();
+            if (readinessProbe != null && readinessProbe.getEnabled())
+                container.setReadinessProbe(createSpaceReadinessProbe(readinessProbe));
         }
 
         return container;
@@ -302,27 +307,27 @@ public class PuController implements ResourceController<Pu> {
         return port;
     }
 
-    private Probe createSpaceLivenessProbe() {
+    private Probe createSpaceLivenessProbe(ProbeSpec livenessProbe) {
         Probe probe = new Probe();
         HTTPGetAction httpGetAction = new HTTPGetAction();
         httpGetAction.setPath("/probes/alive");
         httpGetAction.setPort(new IntOrString(8089));
         probe.setHttpGet(httpGetAction);
-        probe.setInitialDelaySeconds(30);
-        probe.setPeriodSeconds(5);
-        probe.setFailureThreshold(3);
+        probe.setInitialDelaySeconds(livenessProbe.getInitialDelaySeconds());
+        probe.setPeriodSeconds(livenessProbe.getPeriodSeconds());
+        probe.setFailureThreshold(livenessProbe.getFailureThreshold());
         return probe;
     }
 
-    private Probe createSpaceReadinessProbe() {
+    private Probe createSpaceReadinessProbe(ProbeSpec readinessProbe) {
         Probe probe = new Probe();
         HTTPGetAction httpGetAction = new HTTPGetAction();
         httpGetAction.setPath("/probes/ready");
         httpGetAction.setPort(new IntOrString(8089));
         probe.setHttpGet(httpGetAction);
-        probe.setInitialDelaySeconds(30);
-        probe.setPeriodSeconds(5);
-        probe.setFailureThreshold(3);
+        probe.setInitialDelaySeconds(readinessProbe.getInitialDelaySeconds());
+        probe.setPeriodSeconds(readinessProbe.getPeriodSeconds());
+        probe.setFailureThreshold(readinessProbe.getFailureThreshold());
         return probe;
     }
 }
