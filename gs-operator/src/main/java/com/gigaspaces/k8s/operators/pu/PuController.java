@@ -16,10 +16,7 @@ import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
+import java.util.*;
 
 @Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
 public class PuController implements ResourceController<Pu> {
@@ -71,7 +68,6 @@ public class PuController implements ResourceController<Pu> {
         PuSpec spec = pu.getSpec();
         int modifications = 0;
 
-        //TODO: change partitionId TO statefulSetId
         if (!pu.isStateful()) {
             if (createOrUpdateStatefulSet(pu, 1)) {
                 modifications++;
@@ -252,15 +248,9 @@ public class PuController implements ResourceController<Pu> {
         } else {
             args.add("instances=" + spec.getInstances());
         }
-
-        /* TODO:
-            {{- if ($root.Values.resourceUrl) }}
-            - "pu.resourceUrl={{$root.Values.resourceUrl}}"
-            {{- end }}
-            {{- if ($root.Values.properties) }}
-            - "pu.properties={{$root.Values.properties}}"
-            {{- end }}
-        */
+        if (spec.getProperties() != null) {
+            args.add("pu.properties=" + spec.getProperties());
+        }
         return args;
     }
 

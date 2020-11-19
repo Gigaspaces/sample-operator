@@ -49,6 +49,9 @@ spec:
                   type: boolean
                   nullable: true
                   default: false
+                properties:
+                  type: string
+                  nullable: true
                 resourceUrl:
                   type: string
                   nullable: true

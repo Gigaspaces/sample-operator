@@ -17,6 +17,7 @@ public class PuSpec {
     private Integer instances;
     private boolean ha;
     private boolean antiAffinity;
+    private String properties;
 
     public PuSpec applyDefaults() {
         if (image == null)
@@ -99,8 +100,14 @@ public class PuSpec {
     public ManagerSpec getManager() {
         return manager;
     }
-
     public void setManager(ManagerSpec manager) {
         this.manager = manager;
     }
+    public String getProperties() {
+        return properties;
+    }
+    public void setProperties(String properties) {
+        this.properties = properties;
+    }
+
 }
