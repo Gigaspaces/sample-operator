@@ -6,6 +6,12 @@ public class ProbeSpec {
     private int periodSeconds;
     private int failureThreshold;
 
+    public ProbeSpec(int initialDelaySeconds, int periodSeconds, int failureThreshold) {
+        this.initialDelaySeconds = initialDelaySeconds;
+        this.periodSeconds = periodSeconds;
+        this.failureThreshold = failureThreshold;
+    }
+
     public Boolean getEnabled() {
         return enabled;
     }
