@@ -218,10 +218,15 @@ public class PuController implements ResourceController<Pu> {
         container.setArgs(getContainerArgs(pu, partitionId));
         if (pu.isStateful()) {
             ProbeSpec livenessProbe = spec.getLivenessProbe();
-            if (livenessProbe != null && livenessProbe.getEnabled())
-                    container.setLivenessProbe(createSpaceLivenessProbe(livenessProbe));
+            ProbeSpec probeSpec = new ProbeSpec(30, 5, 3);
+            if (livenessProbe == null) {
+                container.setLivenessProbe(createSpaceLivenessProbe(probeSpec));
+            } else if (livenessProbe.getEnabled())
+                container.setLivenessProbe(createSpaceLivenessProbe(livenessProbe));
             ProbeSpec readinessProbe = spec.getReadinessProbe();
-            if (readinessProbe != null && readinessProbe.getEnabled())
+            if (livenessProbe == null) {
+                container.setReadinessProbe(createSpaceReadinessProbe(probeSpec));
+            } else if (readinessProbe.getEnabled())
                 container.setReadinessProbe(createSpaceReadinessProbe(readinessProbe));
         }
 
