@@ -58,6 +58,12 @@ spec:
                 javaHeap:
                   type: string
                   default: "limit-150Mi"
+                productType:
+                  type: string
+                  default: "xap"
+                productVersion:
+                  type: string
+                  default: "15.5.1"
                 readinessProbe:
                   type: object
                   nullable: true

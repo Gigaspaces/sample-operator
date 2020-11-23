@@ -23,6 +23,17 @@ public class PuSpec {
     private ProbeSpec readinessProbe;
     private ProbeSpec livenessProbe;
     private String javaHeap;
+    private String productType;
+    private String productVersion;
+
+
+    public String getProductType() {
+        return productType;
+    }
+
+    public String getProductVersion() {
+        return productVersion;
+    }
 
     public String getJavaHeap() {
         return javaHeap;
@@ -49,12 +60,10 @@ public class PuSpec {
         this.livenessProbe = livenessProbe;
     }
 
-
-
     public PuSpec applyDefaults() {
         if (image == null)
             image = new ImageSpec();
-        image.applyDefaults();
+        image.applyDefaults(getProductType(), getProductVersion());
         if (manager == null)
             manager = new ManagerSpec();
         manager.applyDefaults();
@@ -108,7 +117,7 @@ public class PuSpec {
     }
 
     public String getApp() {
-        return ProductInfo.instance().getProductName() + "-pu";
+        return getProductType() + "-pu";
     }
 
     public List<ResourcesSpec> getResources() {

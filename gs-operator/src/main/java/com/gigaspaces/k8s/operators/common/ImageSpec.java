@@ -7,11 +7,11 @@ public class ImageSpec {
     private String tag;
     private String pullPolicy;
 
-    public void applyDefaults() {
+    public void applyDefaults(String productType, String productVersion) {
         if (repository == null)
-            repository = "gigaspaces/" + ProductInfo.instance().getProductName() + "-enterprise";
+            repository = "gigaspaces/" + productType + "-enterprise";
         if (tag == null)
-            tag = ProductInfo.instance().getVersion();
+            tag = productVersion;
     }
 
     @Override
