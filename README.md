@@ -13,6 +13,7 @@ howto run?
 
 # manager 
 - helm install hello xap-manager --set service.type="NodePort",service.api.nodePort=30890
+- minikube service --url hello-xap-manager-service
 
 # Connect to ops-ui
 - minikube service --url hello-xap-manager-service
@@ -40,3 +41,17 @@ $HOME = /Users/meron/Work/minikube/sample-operator
 
 # delete custom resource
 - kubectl delete -f $HOME/gs-operator/examples/pu.yaml
+
+# delete manager
+- helm del hello --keep-history
+
+# build docker
+cd /Users/meron/Work/github/Gigaspaces/docker/xap-enterprise
+eval $(minikube docker-env)
+docker image ls
+docker build  -t gigaspaces/xap-enterprise:moran .
+
+# PUs
+https://meron-gigaspaces.s3-eu-west-1.amazonaws.com/data-processor.jar
+https://meron-gigaspaces.s3-eu-west-1.amazonaws.com/data-feeder.jar
+
