@@ -17,13 +17,19 @@ import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
 
 @Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
 public class PuController implements ResourceController<Pu> {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final KubernetesClient kubernetesClient;
+    private enum Scale {
+        NONE, OUT, IN, UP, DOWN
+    }
 
     public PuController(KubernetesClient kubernetesClient) {
         this.kubernetesClient = kubernetesClient;
@@ -60,33 +66,80 @@ public class PuController implements ResourceController<Pu> {
     public UpdateControl<Pu> createOrUpdateResource(Pu pu, Context<Pu> context) {
         log.info("\n===> createOrUpdateResource \n" + pu);
         pu.getSpec().applyDefaults();
-        if (isHorizontalScale(pu)) {
-            log.info("Horizontal scaling is under construction"); // TODO: implement.
-            return UpdateControl.noUpdate();
-        }
+
+        /////////////// HACK for using local dev ///////////////
+//        ImageSpec image = new ImageSpec();
+//        image.setTag("dev");
+//        image.setRepository("gigaspaces/xap-enterprise");
+//        pu.getSpec().setImage(image);
+        /////////////// HACK ///////////////
 
         log.info("DEBUG - Creating/updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
-        PuSpec spec = pu.getSpec();
-        int modifications = 0;
 
+        int modifications = 0;
         if (!pu.isStateful()) {
             if (createOrUpdateStatefulSet(pu, 1)) {
                 modifications++;
             }
         } else {
-            int partitions = spec.getPartitions();
-            if (partitions == 0) {
-                if (createOrUpdateStatefulSet(pu, 0)) {
+            Scale horizontalScale = getTypeOfHorizontalScale(pu);
+            switch (horizontalScale) {
+                case NONE:
+                case OUT:
+                    modifications = doScaleOut(pu);
+                    break;
+                case IN:
+                    modifications = doScaleIn(pu);
+                    break;
+            }
+        }
+
+        return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
+    }
+
+    private int doScaleOut(Pu pu) {
+        PuSpec spec = pu.getSpec();
+        int targetPartitions = spec.getPartitions();
+        final int actualPartitions = countActualPartitions(pu);
+
+        //perquisite
+        if (actualPartitions > targetPartitions) return 0;
+
+        int modifications = 0;
+        if (targetPartitions == 0) {
+            if (createOrUpdateStatefulSet(pu, 0)) {
+                log.info("DEBUG - Create/Update Stateful Set with name: {}", pu.getStatefulSetName(0));
+                modifications++;
+            }
+        } else {
+            for (int i = 1; i <= targetPartitions; i++) {
+                if (createOrUpdateStatefulSet(pu, i)) {
+                    log.info("DEBUG - Create/Update Stateful Set with name: {}", pu.getStatefulSetName(i));
                     modifications++;
-                }
-            } else {
-                for (int i = 1; i <= partitions; i++) {
-                    if (createOrUpdateStatefulSet(pu, i))
-                        modifications++;
                 }
             }
         }
-        return modifications == 0 ? UpdateControl.noUpdate() : UpdateControl.updateStatusSubResource(pu);
+        return modifications;
+    }
+
+    private int doScaleIn(Pu pu) {
+        final int targetPartitions = pu.getSpec().getPartitions();
+        final int actualPartitions = countActualPartitions(pu);
+
+        //perquisite
+        if (actualPartitions >= targetPartitions) return 0;
+
+        int modifications = 0;
+        for (int i=actualPartitions; i<=targetPartitions; i++) {
+            RollableScalableResource<StatefulSet, DoneableStatefulSet> resource = statefulSet(pu, i);
+            if (resource == null) break;
+
+            log.info("DEBUG - Delete Stateful Set with name: {}", pu.getStatefulSetName(i));
+            resource.delete();
+            modifications++;
+        }
+
+        return modifications;
     }
 
     private boolean createOrUpdateStatefulSet(Pu pu, int statefulSetId) {
@@ -298,9 +351,25 @@ public class PuController implements ResourceController<Pu> {
         return new ResourceRequirements(limits, requests);
     }
 
-    private boolean isHorizontalScale(Pu pu) {
-        // TODO: fetch topology from zk and compare number of partitions
-        return false;
+    private Scale getTypeOfHorizontalScale(Pu pu) {
+        final int actualPartitions = countActualPartitions(pu);
+        if (actualPartitions == 0) return Scale.NONE;
+
+        final int desiredPartitions = pu.getSpec().getPartitions();
+        if (desiredPartitions > actualPartitions) return Scale.OUT;
+        else if (desiredPartitions < actualPartitions) return Scale.IN;
+        else return Scale.NONE;
+    }
+
+    private int countActualPartitions(Pu pu) {
+        int actualPartitions = 0;
+        int i=0;
+        for(;;) {
+            i++;
+            if (null == statefulSet(pu, i).get()) break;
+            actualPartitions++;
+        }
+        return actualPartitions;
     }
 
     private ServicePort buildServicePort() {
