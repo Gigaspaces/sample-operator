@@ -104,6 +104,7 @@ public class PuController implements ResourceController<Pu> {
 
         log.info("DEBUG - Creating/updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
 
+        createHeadlessService(pu);
         int modifications = 0;
         if (!pu.isStateful()) {
             if (createOrUpdateStatefulSet(pu, 1)) {
@@ -231,6 +232,36 @@ public class PuController implements ResourceController<Pu> {
                 .withName(name);
     }
 
+    private void createHeadlessService(Pu pu) {
+
+        String namespace = pu.getMetadata().getNamespace();
+        String name = pu.getMetadata().getName();
+        PuSpec spec = pu.getSpec();
+
+        ServiceBuilder service = new ServiceBuilder();
+        service.withApiVersion("v1")
+                .withKind("Service")
+                .withNewMetadata()
+                .withNamespace(namespace)
+                .withName(name + "-" + spec.getApp() + "-hs")
+                .withLabels(new MapBuilder<String, String>()
+                        .put("app", spec.getApp())
+                        .put("release", pu.getMetadata().getName())
+                        .build())
+                .endMetadata()
+                .withNewSpec()
+                .withSelector(new MapBuilder<String, String>()
+                        .put("selectorId", name + "-" + spec.getApp())
+                        .build())
+                .withNewType("ClusterIP")
+                .withClusterIP("None")
+                .endSpec();
+
+        Service item = service.build();
+        Service service1 = kubernetesClient.services().inNamespace(namespace).create(item);
+        log.info("created Service with name " + service1.getMetadata().getName());
+    }
+
         private void createLrmiService(Pu pu, String partitionId, int statefulSetId) {
 
         String namespace = pu.getMetadata().getNamespace();
@@ -300,7 +331,7 @@ public class PuController implements ResourceController<Pu> {
                 .endMetadata();
         statefulSet.withNewSpec()
                 .withReplicas(replicas)
-                .withServiceName(spec.getApp())
+                .withServiceName(pu.getMetadata().getName()+ "-" + spec.getApp() + "-hs")
                 .withNewSelector()
                 .withMatchLabels(MapBuilder.singletonMap("selectorId", name))
                 .endSelector()
