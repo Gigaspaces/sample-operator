@@ -4,6 +4,7 @@ import com.gigaspaces.k8s.operators.ListBuilder;
 import com.gigaspaces.k8s.operators.MapBuilder;
 import com.gigaspaces.k8s.operators.common.ProbeSpec;
 import com.gigaspaces.k8s.operators.common.ResourcesSpec;
+import com.gigaspaces.k8s.operators.common.ServiceSpec;
 import com.github.containersolutions.operator.api.Context;
 import com.github.containersolutions.operator.api.Controller;
 import com.github.containersolutions.operator.api.ResourceController;
@@ -14,6 +15,7 @@ import io.fabric8.kubernetes.api.model.apps.StatefulSet;
 import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
+import io.fabric8.kubernetes.client.dsl.ServiceResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,24 +43,49 @@ public class PuController implements ResourceController<Pu> {
 
         PuSpec spec = pu.getSpec().applyDefaults();
         int partitions = spec.getPartitions();
-        if (partitions == 0)
-            deleteStatefulSet(pu, 0);
-        else {
+        if (partitions == 0) {
+            deleteServiceAndStatefulSet(pu, 0);
+        } else {
             for (int i = 1; i <= partitions; i++) {
-                deleteStatefulSet(pu, i);
+                deleteServiceAndStatefulSet(pu, i);
+
             }
         }
+
         return true;
     }
 
-    private void deleteStatefulSet(Pu pu, int partitionId) {
-        String name = pu.getStatefulSetName(partitionId);
+    private void deleteServiceAndStatefulSet(Pu pu, int statefulSetId) {
+        deleteStatefulSet(pu, statefulSetId);
+
+        if (pu.getSpec().getService() != null && pu.getSpec().getService().getLrmi().getEnabled()) {
+            deleteService(pu, statefulSetId, "-0");
+            if (pu.getSpec().isHa()) {
+                deleteService(pu, statefulSetId, "-1");
+            }
+        }
+    }
+
+    private void deleteStatefulSet(Pu pu, int statefulSetId) {
+        String name = pu.getStatefulSetName(statefulSetId);
         StatefulSet exists = statefulSet(pu, name).get();
         if (exists == null) {
             log.info("stateful set '" + name + "' does not exist");
         } else {
             Boolean delete = statefulSet(pu, name).delete();
             log.info("Deleted (" + delete + ") StatefulSet with name " + exists.getMetadata().getName());
+        }
+
+    }
+
+    private void deleteService(Pu pu, int statefulSetId, String partitionId) {
+        String name = pu.getServiceName(partitionId, statefulSetId);
+        Service exists = service(pu, name).get();
+        if (exists == null) {
+            log.info("service '" + name + "' does not exist");
+        } else {
+            Boolean delete = service(pu, name).delete();
+            log.info("Deleted (" + delete + ") service with name " + exists.getMetadata().getName());
         }
     }
 
@@ -145,6 +172,18 @@ public class PuController implements ResourceController<Pu> {
     private boolean createOrUpdateStatefulSet(Pu pu, int statefulSetId) {
         StatefulSet statefulSet = statefulSet(pu, statefulSetId).get();
         if (statefulSet == null) {
+            if (pu.getSpec().getService() != null && pu.getSpec().getService().getLrmi().getEnabled()) {
+                if (pu.getSpec().getPartitions() > 0) {
+                    createService(pu, statefulSetId + "-0", statefulSetId);
+                    if (pu.getSpec().isHa()) {
+                        createService(pu, statefulSetId + "-1", statefulSetId);
+
+                    }
+                } else {
+                    createService(pu, "0", 0);
+
+                }
+            }
             createStatefulSet(pu, statefulSetId);
             return true;
         }
@@ -183,6 +222,58 @@ public class PuController implements ResourceController<Pu> {
         return kubernetesClient.apps().statefulSets()
                 .inNamespace(pu.getMetadata().getNamespace())
                 .withName(name);
+    }
+
+    private ServiceResource<Service, DoneableService> service(Pu pu, String name) {
+        return kubernetesClient.services()
+                .inNamespace(pu.getMetadata().getNamespace())
+                .withName(name);
+    }
+
+    private void createService(Pu pu, String partitionId, int statefulSetId) {
+
+        String namespace = pu.getMetadata().getNamespace();
+        String name = pu.getMetadata().getName();
+        PuSpec spec = pu.getSpec();
+        String selectorId = name + "-" + spec.getApp();
+
+        if (pu.getSpec().getPartitions() > 0)
+            selectorId = selectorId + "-" + statefulSetId;
+
+        ServiceSpec serviceSpec = pu.getSpec().getService();
+        ServiceBuilder service = new ServiceBuilder();
+        service.withApiVersion("v1")
+                .withKind("Service")
+                .withNewMetadata()
+                .withNamespace(namespace)
+                .withName(name + "-" + spec.getApp() + "-" + partitionId + "-service")
+                .withLabels(new MapBuilder<String, String>()
+                        .put("app", spec.getApp())
+                        .put("release", pu.getMetadata().getName())
+                        .build())
+                .endMetadata()
+                .withNewSpec()
+                .withSelector(new MapBuilder<String, String>()
+                        .put("statefulset.kubernetes.io/pod-name", name + "-" + spec.getApp() + "-" + partitionId)
+                        .put("app", spec.getApp())
+                        .put("partitionId", String.valueOf(statefulSetId))
+                        .put("selectorId", selectorId)
+                        .build())
+                .withNewType(serviceSpec.getType())
+                .withPorts(ListBuilder.singletonList(buildServicePort(serviceSpec)))
+                .endSpec();
+
+        Service item = service.build();
+        Service service1 = kubernetesClient.services().inNamespace(namespace).create(item);
+        log.info("created Service with name " + service1.getMetadata().getName());
+    }
+
+    private ServicePort buildServicePort(ServiceSpec serviceSpec) {
+        ServicePort port = new ServicePort();
+        port.setName("lrmi");
+        port.setProtocol("TCP");
+        port.setPort(serviceSpec.getLrmi().getPort());
+        return port;
     }
 
     private void createStatefulSet(Pu pu, int partition) {
@@ -301,6 +392,10 @@ public class PuController implements ResourceController<Pu> {
         args.add("java.heap=" + spec.getJavaHeap());
         args.add("manager.name=" + spec.getManager().getName());
         args.add("manager.ports.api=" + spec.getManager().getPorts().getApi());
+        if (pu.getSpec().getService() != null && pu.getSpec().getService().getLrmi().getEnabled()) {
+            args.add("lrmi.port=" + pu.getSpec().getService().getLrmi().getPort());
+            args.add("external.lrmi.enabled=true");
+        }
         if (spec.getResourceUrl() != null) {
             args.add("pu.resourceUrl=" + spec.getResourceUrl());
         }
@@ -372,14 +467,6 @@ public class PuController implements ResourceController<Pu> {
         return actualPartitions;
     }
 
-    private ServicePort buildServicePort() {
-        ServicePort port = new ServicePort();
-        port.setName("lrmi");
-        port.setProtocol("TCP");
-        port.setPort(8200);
-        //port.setNodePort();
-        return port;
-    }
 
     private Probe createSpaceLivenessProbe(ProbeSpec livenessProbe) {
         Probe probe = new Probe();

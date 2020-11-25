@@ -4,6 +4,7 @@ import com.gigaspaces.k8s.operators.ProductInfo;
 import com.gigaspaces.k8s.operators.common.ImageSpec;
 import com.gigaspaces.k8s.operators.common.ProbeSpec;
 import com.gigaspaces.k8s.operators.common.ResourcesSpec;
+import com.gigaspaces.k8s.operators.common.ServiceSpec;
 import io.fabric8.kubernetes.api.model.Probe;
 
 import java.util.List;
@@ -25,7 +26,12 @@ public class PuSpec {
     private String javaHeap;
     private String productType;
     private String productVersion;
+    private ServiceSpec service;
 
+
+    public ServiceSpec getService() {
+        return service;
+    }
 
     public String getProductType() {
         return productType;

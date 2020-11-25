@@ -20,10 +20,17 @@ public class Pu extends CustomResource {
         return getMetadata().getName() + "-" + getSpec().getApp();
     }
 
+    public String getServiceName(String partitionId, int statefulSetId) {
+        if (isStateful() && spec.getPartitions() != 0) {
+            return getMetadata().getName() + "-" + getSpec().getApp() + "-" + statefulSetId + partitionId + "-service";
+        }
+        return getMetadata().getName() + "-" + getSpec().getApp() + "-" + statefulSetId + "-service";
+    }
+
     public boolean isStateful() {
         Integer partitions = spec.getPartitions();
         Integer instances = spec.getInstances();
-        if (partitions!= null && partitions > 0)
+        if (partitions != null && partitions > 0)
             return true;
         else return partitions != null && partitions == 0 && (instances == null || instances == 0);
     }

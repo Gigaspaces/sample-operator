@@ -64,6 +64,24 @@ spec:
                 productVersion:
                   type: string
                   default: "15.5.1"
+                service:
+                  type: object
+                  nullable: true
+                  properties:
+                    type:
+                      type: string
+                      default: LoadBalancer
+                    lrmi:
+                      type: object
+                      properties:
+                        enabled:
+                          type: boolean
+                          default: false
+                        port:
+                          type: integer
+                          default: 8200
+                        initialNodePort:
+                          type: integer
                 readinessProbe:
                   type: object
                   nullable: true
