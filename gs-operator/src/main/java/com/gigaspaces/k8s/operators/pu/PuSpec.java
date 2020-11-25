@@ -1,11 +1,6 @@
 package com.gigaspaces.k8s.operators.pu;
 
-import com.gigaspaces.k8s.operators.ProductInfo;
-import com.gigaspaces.k8s.operators.common.ImageSpec;
-import com.gigaspaces.k8s.operators.common.ProbeSpec;
-import com.gigaspaces.k8s.operators.common.ResourcesSpec;
-import com.gigaspaces.k8s.operators.common.ServiceSpec;
-import io.fabric8.kubernetes.api.model.Probe;
+import com.gigaspaces.k8s.operators.common.*;
 
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +22,12 @@ public class PuSpec {
     private String productType;
     private String productVersion;
     private ServiceSpec service;
+    private MemoryXtendSpec memoryXtendVolume;
+
+
+    public MemoryXtendSpec getMemoryXtendVolume() {
+        return memoryXtendVolume;
+    }
 
 
     public ServiceSpec getService() {

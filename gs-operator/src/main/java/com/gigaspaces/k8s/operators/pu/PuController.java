@@ -2,6 +2,7 @@ package com.gigaspaces.k8s.operators.pu;
 
 import com.gigaspaces.k8s.operators.ListBuilder;
 import com.gigaspaces.k8s.operators.MapBuilder;
+import com.gigaspaces.k8s.operators.common.MemoryXtendSpec;
 import com.gigaspaces.k8s.operators.common.ProbeSpec;
 import com.gigaspaces.k8s.operators.common.ResourcesSpec;
 import com.gigaspaces.k8s.operators.common.ServiceSpec;
@@ -44,10 +45,10 @@ public class PuController implements ResourceController<Pu> {
         PuSpec spec = pu.getSpec().applyDefaults();
         int partitions = spec.getPartitions();
         if (partitions == 0) {
-            deleteServiceAndStatefulSet(pu, 0);
+            deletePuResources(pu, 0);
         } else {
             for (int i = 1; i <= partitions; i++) {
-                deleteServiceAndStatefulSet(pu, i);
+                deletePuResources(pu, i);
 
             }
         }
@@ -55,7 +56,7 @@ public class PuController implements ResourceController<Pu> {
         return true;
     }
 
-    private void deleteServiceAndStatefulSet(Pu pu, int statefulSetId) {
+    private void deletePuResources(Pu pu, int statefulSetId) {
         deleteStatefulSet(pu, statefulSetId);
 
         if (pu.getSpec().getService() != null && pu.getSpec().getService().getLrmi().getEnabled()) {
@@ -174,13 +175,13 @@ public class PuController implements ResourceController<Pu> {
         if (statefulSet == null) {
             if (pu.getSpec().getService() != null && pu.getSpec().getService().getLrmi().getEnabled()) {
                 if (pu.getSpec().getPartitions() > 0) {
-                    createService(pu, statefulSetId + "-0", statefulSetId);
+                    createLrmiService(pu, statefulSetId + "-0", statefulSetId);
                     if (pu.getSpec().isHa()) {
-                        createService(pu, statefulSetId + "-1", statefulSetId);
+                        createLrmiService(pu, statefulSetId + "-1", statefulSetId);
 
                     }
                 } else {
-                    createService(pu, "0", 0);
+                    createLrmiService(pu, "0", 0);
 
                 }
             }
@@ -230,7 +231,7 @@ public class PuController implements ResourceController<Pu> {
                 .withName(name);
     }
 
-    private void createService(Pu pu, String partitionId, int statefulSetId) {
+        private void createLrmiService(Pu pu, String partitionId, int statefulSetId) {
 
         String namespace = pu.getMetadata().getNamespace();
         String name = pu.getMetadata().getName();
@@ -323,6 +324,9 @@ public class PuController implements ResourceController<Pu> {
                 .endSpec();
 
         StatefulSet item = statefulSet.build();
+        if (pu.getSpec().getMemoryXtendVolume() != null && pu.getSpec().getMemoryXtendVolume().getEnabled()) {
+            item.getSpec().setVolumeClaimTemplates(ListBuilder.singletonList(persistentVolumeClaimBuilder(pu, "0", partition)));
+        }
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
     }
@@ -360,6 +364,13 @@ public class PuController implements ResourceController<Pu> {
         container.setEnv(getContainerEnvVars(pu, partitionId));
         container.setCommand(ListBuilder.singletonList("tools/kubernetes/entrypoint.sh"));
         container.setArgs(getContainerArgs(pu, partitionId));
+        if (pu.getSpec().getMemoryXtendVolume() != null && pu.getSpec().getMemoryXtendVolume().getEnabled()) {
+            VolumeMount volumeMount = new VolumeMount();
+            volumeMount.setMountPath(pu.getSpec().getMemoryXtendVolume().getVolumeMount().getMountPath());
+            volumeMount.setName(pu.getSpec().getMemoryXtendVolume().getVolumeMount().getName());
+            container.setVolumeMounts(ListBuilder.singletonList(volumeMount));
+        }
+
         if (pu.isStateful()) {
             ProbeSpec livenessProbe = spec.getLivenessProbe();
             ProbeSpec probeSpec = new ProbeSpec(30, 5, 3);
@@ -491,4 +502,35 @@ public class PuController implements ResourceController<Pu> {
         probe.setFailureThreshold(readinessProbe.getFailureThreshold());
         return probe;
     }
+
+
+    private PersistentVolumeClaim persistentVolumeClaimBuilder(Pu pu, String partitionId, int statefulSetId) {
+        MemoryXtendSpec memoryXtend = pu.getSpec().getMemoryXtendVolume();
+        String namespace = pu.getMetadata().getNamespace();
+
+        PersistentVolumeClaimBuilder persistentVolumeClaimBuilder = new PersistentVolumeClaimBuilder();
+        persistentVolumeClaimBuilder
+                .withApiVersion("v1")
+                .withKind("PersistentVolumeClaim")
+                .withNewMetadata()
+                .withNamespace(namespace)
+                .withName(memoryXtend.getVolumeMount().getName())
+                .withLabels(new MapBuilder<String, String>()
+                        .put("selectorId", pu.getMetadata().getName() + "-" + pu.getSpec().getApp() + "-" + statefulSetId)
+                        .build())
+                .endMetadata()
+                .withNewSpec()
+                .withAccessModes(memoryXtend.getVolumeClaimTemplate().getAccessModes())
+                .withNewResources()
+                .addToRequests("storage", new Quantity(memoryXtend.getVolumeClaimTemplate().getStorage()))
+                .endResources()
+                .withStorageClassName("standard")
+                .withVolumeMode("Filesystem")
+                .endSpec()
+        ;
+        PersistentVolumeClaim build = persistentVolumeClaimBuilder.build();
+        build.setAdditionalProperty("persistentVolumeReclaimPolicy", "Recycle");
+        return build;
+    }
+
 }

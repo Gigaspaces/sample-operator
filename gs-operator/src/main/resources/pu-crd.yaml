@@ -114,6 +114,36 @@ spec:
                     failureThreshold:
                       type: integer
                       default: 3
+                memoryXtendVolume:
+                  type: object
+                  nullable: true
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                    volumeMount:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          default: mx-volume
+                        mountPath:
+                          type: string
+                          default: /opt/gigaspaces/work/memoryxtend
+                    volumeClaimTemplate:
+                      type: object
+                      properties:
+                        storage:
+                          type: string
+                        storageClassName:
+                          type: string
+                          default: "standard"
+                        accessModes:
+                          type: string
+                          default: ReadWriteOnce
+#                        persistentVolumeReclaimPolicy:
+#                          type: string
+#                          default: Delete
                 image:
                   type: object
                   nullable: true
