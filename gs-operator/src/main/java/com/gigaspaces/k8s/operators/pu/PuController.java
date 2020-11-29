@@ -30,6 +30,7 @@ public class PuController implements ResourceController<Pu> {
 
     private final Logger log = LoggerFactory.getLogger(getClass());
     private final KubernetesClient kubernetesClient;
+
     private enum Scale {
         NONE, OUT, IN, UP, DOWN
     }
@@ -41,6 +42,7 @@ public class PuController implements ResourceController<Pu> {
     @Override
     public boolean deleteResource(Pu pu, Context<Pu> context) {
         log.info("\n===> deleteResource \n" + pu);
+        deleteService(pu);
 
         PuSpec spec = pu.getSpec().applyDefaults();
         int partitions = spec.getPartitions();
@@ -60,9 +62,9 @@ public class PuController implements ResourceController<Pu> {
         deleteStatefulSet(pu, statefulSetId);
 
         if (pu.getSpec().getService() != null && pu.getSpec().getService().getLrmi().getEnabled()) {
-            deleteService(pu, statefulSetId, "-0");
+            deleteLrmiService(pu, statefulSetId, "-0");
             if (pu.getSpec().isHa()) {
-                deleteService(pu, statefulSetId, "-1");
+                deleteLrmiService(pu, statefulSetId, "-1");
             }
         }
     }
@@ -79,8 +81,19 @@ public class PuController implements ResourceController<Pu> {
 
     }
 
-    private void deleteService(Pu pu, int statefulSetId, String partitionId) {
-        String name = pu.getServiceName(partitionId, statefulSetId);
+    private void deleteLrmiService(Pu pu, int statefulSetId, String partitionId) {
+        String name = pu.getLrmiService(partitionId, statefulSetId);
+        Service exists = service(pu, name).get();
+        if (exists == null) {
+            log.info("service '" + name + "' does not exist");
+        } else {
+            Boolean delete = service(pu, name).delete();
+            log.info("Deleted (" + delete + ") service with name " + exists.getMetadata().getName());
+        }
+    }
+
+    private void deleteService(Pu pu) {
+        String name = pu.getServiceName();
         Service exists = service(pu, name).get();
         if (exists == null) {
             log.info("service '" + name + "' does not exist");
@@ -103,8 +116,11 @@ public class PuController implements ResourceController<Pu> {
         /////////////// HACK ///////////////
 
         log.info("DEBUG - Creating/updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
+        String name = pu.getServiceName();
+        Service service = service(pu, name).get();
+        if (service == null)
+            createHeadlessService(pu);
 
-        createHeadlessService(pu);
         int modifications = 0;
         if (!pu.isStateful()) {
             if (createOrUpdateStatefulSet(pu, 1)) {
@@ -159,7 +175,7 @@ public class PuController implements ResourceController<Pu> {
         if (actualPartitions >= targetPartitions) return 0;
 
         int modifications = 0;
-        for (int i=actualPartitions; i<=targetPartitions; i++) {
+        for (int i = actualPartitions; i <= targetPartitions; i++) {
             RollableScalableResource<StatefulSet, DoneableStatefulSet> resource = statefulSet(pu, i);
             if (resource == null) break;
 
@@ -262,7 +278,7 @@ public class PuController implements ResourceController<Pu> {
         log.info("created Service with name " + service1.getMetadata().getName());
     }
 
-        private void createLrmiService(Pu pu, String partitionId, int statefulSetId) {
+    private void createLrmiService(Pu pu, String partitionId, int statefulSetId) {
 
         String namespace = pu.getMetadata().getNamespace();
         String name = pu.getMetadata().getName();
@@ -331,7 +347,7 @@ public class PuController implements ResourceController<Pu> {
                 .endMetadata();
         statefulSet.withNewSpec()
                 .withReplicas(replicas)
-                .withServiceName(pu.getMetadata().getName()+ "-" + spec.getApp() + "-hs")
+                .withServiceName(pu.getMetadata().getName() + "-" + spec.getApp() + "-hs")
                 .withNewSelector()
                 .withMatchLabels(MapBuilder.singletonMap("selectorId", name))
                 .endSelector()
@@ -356,7 +372,7 @@ public class PuController implements ResourceController<Pu> {
 
         StatefulSet item = statefulSet.build();
         if (pu.getSpec().getMemoryXtendVolume() != null && pu.getSpec().getMemoryXtendVolume().getEnabled()) {
-            item.getSpec().setVolumeClaimTemplates(ListBuilder.singletonList(persistentVolumeClaimBuilder(pu, "0", partition)));
+            item.getSpec().setVolumeClaimTemplates(ListBuilder.singletonList(persistentVolumeClaimBuilder(pu, partition)));
         }
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
@@ -500,8 +516,8 @@ public class PuController implements ResourceController<Pu> {
 
     private int countActualPartitions(Pu pu) {
         int actualPartitions = 0;
-        int i=0;
-        for(;;) {
+        int i = 0;
+        for (; ; ) {
             i++;
             if (null == statefulSet(pu, i).get()) break;
             actualPartitions++;
@@ -535,7 +551,7 @@ public class PuController implements ResourceController<Pu> {
     }
 
 
-    private PersistentVolumeClaim persistentVolumeClaimBuilder(Pu pu, String partitionId, int statefulSetId) {
+    private PersistentVolumeClaim persistentVolumeClaimBuilder(Pu pu, int statefulSetId) {
         MemoryXtendSpec memoryXtend = pu.getSpec().getMemoryXtendVolume();
         String namespace = pu.getMetadata().getNamespace();
 
@@ -560,7 +576,6 @@ public class PuController implements ResourceController<Pu> {
                 .endSpec()
         ;
         PersistentVolumeClaim build = persistentVolumeClaimBuilder.build();
-        build.setAdditionalProperty("persistentVolumeReclaimPolicy", "Recycle");
         return build;
     }
 

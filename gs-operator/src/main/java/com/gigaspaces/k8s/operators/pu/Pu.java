@@ -20,17 +20,15 @@ public class Pu extends CustomResource {
         return getMetadata().getName() + "-" + getSpec().getApp();
     }
 
-    public String getServiceName(String partitionId, int statefulSetId) {
+    public String getLrmiService(String partitionId, int statefulSetId) {
         if (isStateful() && spec.getPartitions() != 0) {
             return getMetadata().getName() + "-" + getSpec().getApp() + "-" + statefulSetId + partitionId + "-service";
         }
         return getMetadata().getName() + "-" + getSpec().getApp() + "-" + statefulSetId + "-service";
     }
-    public String getVolumeName(String partitionId, int statefulSetId) {
-        if (isStateful() && spec.getPartitions() != 0) {
-            return spec.getMemoryXtendVolume().getVolumeMount().getName() + "-" + getMetadata().getName() + "-" + getSpec().getApp() + "-" + statefulSetId + "-" +  partitionId;
-        }
-        return spec.getMemoryXtendVolume().getVolumeMount().getName() + "-" + getMetadata().getName() + "-" + getSpec().getApp() + "-" + statefulSetId;
+
+    public String getServiceName() {
+        return getMetadata().getName() + "-" + getSpec().getApp() + "-hs";
     }
 
     public boolean isStateful() {

@@ -80,6 +80,7 @@ public class PuSpec {
     public String getLicense() {
         return license;
     }
+
     public void setLicense(String license) {
         this.license = license;
     }
@@ -89,10 +90,10 @@ public class PuSpec {
     public void setResourceUrl(String resourceUrl) {
         this.resourceUrl = resourceUrl;
     }
-
     public Integer getPartitions() {
         return partitions;
     }
+
     public void setPartitions(int partitions) {
         this.partitions = partitions;
     }
@@ -102,10 +103,10 @@ public class PuSpec {
     public void setInstances(int instances) {
         this.instances = instances;
     }
-
     public boolean isHa() {
         return ha;
     }
+
     public void setHa(boolean ha) {
         this.ha = ha;
     }
@@ -115,14 +116,13 @@ public class PuSpec {
     public void setAntiAffinity(boolean antiAffinity) {
         this.antiAffinity = antiAffinity;
     }
-
     public ImageSpec getImage() {
         return image;
     }
+
     public void setImage(ImageSpec image) {
         this.image = image;
     }
-
     public String getApp() {
         return getProductType() + "-pu";
     }
@@ -148,6 +148,7 @@ public class PuSpec {
     public ManagerSpec getManager() {
         return manager;
     }
+
     public void setManager(ManagerSpec manager) {
         this.manager = manager;
     }
@@ -158,4 +159,19 @@ public class PuSpec {
         this.properties = properties;
     }
 
+    public void setProductType(String productType) {
+        this.productType = productType;
+    }
+
+    public void setProductVersion(String productVersion) {
+        this.productVersion = productVersion;
+    }
+
+    public void setService(ServiceSpec service) {
+        this.service = service;
+    }
+
+    public void setMemoryXtendVolume(MemoryXtendSpec memoryXtendVolume) {
+        this.memoryXtendVolume = memoryXtendVolume;
+    }
 }
