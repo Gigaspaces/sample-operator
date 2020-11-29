@@ -20,10 +20,8 @@ import io.fabric8.kubernetes.client.dsl.ServiceResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.StringJoiner;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller(crdName = "pus.gigaspaces.com", customResourceClass = Pu.class)
 public class PuController implements ResourceController<Pu> {
@@ -374,6 +372,15 @@ public class PuController implements ResourceController<Pu> {
         if (pu.getSpec().getMemoryXtendVolume() != null && pu.getSpec().getMemoryXtendVolume().getEnabled()) {
             item.getSpec().setVolumeClaimTemplates(ListBuilder.singletonList(persistentVolumeClaimBuilder(pu, partition)));
         }
+
+        if (pu.getSpec().getNodeSelector() != null && pu.getSpec().getNodeSelector().getEnabled() && pu.getSpec().getNodeSelector().getSelector() != null) {
+            Map<String, String> nodeSelectorProperties = Arrays.stream(pu.getSpec().getNodeSelector().getSelector().replace(" ", "").split(", "))
+                    .map(arrayData -> arrayData.split(":"))
+                    .collect(Collectors.toMap(d -> d[0].trim(), d -> d[1]));
+
+            item.getSpec().getTemplate().getSpec().setNodeSelector(nodeSelectorProperties);
+        }
+
         StatefulSet created = kubernetesClient.apps().statefulSets().inNamespace(namespace).create(item);
         log.info("created StatefulSet with name " + created.getMetadata().getName());
     }

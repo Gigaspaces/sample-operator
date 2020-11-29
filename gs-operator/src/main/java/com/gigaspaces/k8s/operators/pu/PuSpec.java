@@ -23,7 +23,15 @@ public class PuSpec {
     private String productVersion;
     private ServiceSpec service;
     private MemoryXtendSpec memoryXtendVolume;
+    private NodeSelectorSpec nodeSelector;
 
+    public NodeSelectorSpec getNodeSelector() {
+        return nodeSelector;
+    }
+
+    public void setNodeSelector(NodeSelectorSpec nodeSelector) {
+        this.nodeSelector = nodeSelector;
+    }
 
     public MemoryXtendSpec getMemoryXtendVolume() {
         return memoryXtendVolume;

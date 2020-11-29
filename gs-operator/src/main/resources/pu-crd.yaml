@@ -114,6 +114,16 @@ spec:
                     failureThreshold:
                       type: integer
                       default: 3
+                nodeSelector:
+                  type: object
+                  nullable: true
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: false
+                    selector:
+                      type: string
+                      nullable: true
                 memoryXtendVolume:
                   type: object
                   nullable: true
