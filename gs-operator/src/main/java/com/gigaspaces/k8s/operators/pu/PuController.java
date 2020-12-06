@@ -106,13 +106,6 @@ public class PuController implements ResourceController<Pu> {
         log.info("\n===> createOrUpdateResource \n" + pu);
         pu.getSpec().applyDefaults();
 
-        /////////////// HACK for using local dev ///////////////
-//        ImageSpec image = new ImageSpec();
-//        image.setTag("dev");
-//        image.setRepository("gigaspaces/xap-enterprise");
-//        pu.getSpec().setImage(image);
-        /////////////// HACK ///////////////
-
         log.info("DEBUG - Creating/updating pu {} to generation {}", pu.getMetadata().getName(), pu.getMetadata().getGeneration());
         String name = pu.getServiceName();
         Service service = service(pu, name).get();
