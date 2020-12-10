@@ -203,20 +203,22 @@ public class PuController implements ResourceController<Pu> {
         StatefulSet updated = kubernetesClient.apps().statefulSets()
                 .inNamespace(statefulSet.getMetadata().getNamespace())
                 .withName(statefulSet.getMetadata().getName())
-                //.rolling()
                 .edit()
-                .editSpec()
-                .editTemplate()
-                .editSpec()
-                .editFirstContainer()
-                .withImage(pu.getSpec().getImage().toString())
-                .withResources(getResourceRequirements(pu.getSpec(), partitionId))
-                .withArgs(getContainerArgs(pu, partitionId))
-                .withEnv(getContainerEnvVars(pu, partitionId))
-                .endContainer()
-                .endSpec()
-                .endTemplate()
-                .endSpec()
+                .withMetadata(statefulSet.getMetadata())
+                    .withSpec(statefulSet.getSpec())
+                        .editSpec()
+                            .editTemplate()
+                                .editSpec()
+                                    .withContainers(statefulSet.getSpec().getTemplate().getSpec().getContainers())
+                                    .editFirstContainer()
+                                        .withImage(pu.getSpec().getImage().toString())
+                                        .withResources(getResourceRequirements(pu.getSpec(), partitionId))
+                                        .withArgs(getContainerArgs(pu, partitionId))
+                                        .withEnv(getContainerEnvVars(pu, partitionId))
+                                    .endContainer()
+                                .endSpec()
+                            .endTemplate()
+                        .endSpec()
                 .done();
         boolean result = updated.getMetadata().getGeneration() > statefulSet.getMetadata().getGeneration();
         log.info("DEBUG - partition: {} updated={}, orig gen: {}, new gen: {}", partitionId, result, statefulSet.getMetadata().getGeneration(), updated.getMetadata().getGeneration());
@@ -458,7 +460,7 @@ public class PuController implements ResourceController<Pu> {
             args.add("pu.resourceUrl=" + spec.getResourceUrl());
         }
         if (pu.isStateful()) {
-            args.add("partitions=" + spec.getPartitions()); // TODO: redundant when zk integration is done
+            args.add("partitions=0"); // TODO: redundant when zk integration is done
             args.add("ha=" + spec.isHa()); // TODO: redundant when zk integration is done
             args.add("partitionId=" + partitionId);
         } else {
