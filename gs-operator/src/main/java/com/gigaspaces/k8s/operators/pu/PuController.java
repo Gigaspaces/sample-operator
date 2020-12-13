@@ -11,9 +11,7 @@ import com.github.containersolutions.operator.api.Controller;
 import com.github.containersolutions.operator.api.ResourceController;
 import com.github.containersolutions.operator.api.UpdateControl;
 import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.api.model.apps.DoneableStatefulSet;
-import io.fabric8.kubernetes.api.model.apps.StatefulSet;
-import io.fabric8.kubernetes.api.model.apps.StatefulSetBuilder;
+import io.fabric8.kubernetes.api.model.apps.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.dsl.RollableScalableResource;
 import io.fabric8.kubernetes.client.dsl.ServiceResource;
@@ -127,6 +125,9 @@ public class PuController implements ResourceController<Pu> {
                 case IN:
                     modifications = doScaleIn(pu);
                     break;
+                case UP:
+                    modifications = doScaleUpDown(pu);
+                    break;
             }
         }
 
@@ -153,6 +154,21 @@ public class PuController implements ResourceController<Pu> {
                     log.info("DEBUG - Create/Update Stateful Set with name: {}", pu.getStatefulSetName(i));
                     modifications++;
                 }
+            }
+        }
+        return modifications;
+    }
+
+    private int doScaleUpDown(Pu pu) {
+        if (!pu.isStateful()){
+            createOrUpdateStatefulSet(pu, 1);
+        }
+
+        int modifications = 0;
+        for (int i = 1; i <= pu.getSpec().getPartitions(); i++) {
+            if (createOrUpdateStatefulSet(pu, i)) {
+                log.info("DEBUG - Create/Update Stateful Set with name: {}", pu.getStatefulSetName(i));
+                modifications++;
             }
         }
         return modifications;
@@ -509,11 +525,12 @@ public class PuController implements ResourceController<Pu> {
     private Scale getTypeOfHorizontalScale(Pu pu) {
         final int actualPartitions = countActualPartitions(pu);
         if (actualPartitions == 0) return Scale.NONE;
-
         final int desiredPartitions = pu.getSpec().getPartitions();
         if (desiredPartitions > actualPartitions) return Scale.OUT;
         else if (desiredPartitions < actualPartitions) return Scale.IN;
-        else return Scale.NONE;
+        else {
+            return Scale.UP;
+        }
     }
 
     private int countActualPartitions(Pu pu) {
